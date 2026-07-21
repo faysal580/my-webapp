@@ -29,6 +29,7 @@ from processors import (
     single_link_downloader, multi_link_downloader, original_ratio_downloader,
     original_name_1080,
     daraz_scraper, top_deal_sticker_remover, photoroom_lite,
+    campaign_sticker_price,
 )
 
 BASE_DIR = Path(__file__).parent
@@ -186,6 +187,24 @@ TOOLS = {
             {"key": "target_y", "type": "number", "label": "Target box Y", "default": 254},
         ],
         "module": price_insert,
+    },
+    "campaign_sticker_price": {
+        "name": "Campaign Sticker with Price",
+        "description": "Upload your images, a campaign template PSD (with an 'image' layer and a price text layer containing 'Tk.'), and a CSV (filename, price) — fits each image into the template and updates the price automatically.",
+        "stage": "TAG",
+        "icon": ICONS["tag"],
+        "windows_only": True,
+        "fields": [
+            {"key": "images", "type": "files", "label": "Images", "accept": "image/*", "required": True},
+            {"key": "template_psd", "type": "file", "label": "Campaign template PSD", "accept": ".psd", "required": True},
+            {"key": "prices_csv", "type": "file", "label": "Prices CSV (filename, price)", "accept": ".csv", "required": True},
+            {"key": "target_width", "type": "number", "label": "Target box width", "default": 980},
+            {"key": "target_height", "type": "number", "label": "Target box height", "default": 735},
+            {"key": "target_x", "type": "number", "label": "Target box X", "default": 50},
+            {"key": "target_y", "type": "number", "label": "Target box Y", "default": 325},
+            {"key": "jpeg_quality", "type": "number", "label": "JPEG quality (1-12)", "default": 12},
+        ],
+        "module": campaign_sticker_price,
     },
     "top_deal_sticker_remover": {
         "name": "Top Deal Sticker Remover",
