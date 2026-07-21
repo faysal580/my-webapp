@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ tool.name }} &mdash; Running{% endblock %}
+{% block content %}
+  <a href="{{ url_for('tool_page', tool_id=tool_id) }}" class="back-link">&larr; Back to this tool</a>
+
+  <div class="tool-header">
+    <span class="tool-icon">{{ tool.icon|safe }}</span>
+    <div>
+      <div class="stage-label">{{ tool.stage }}</div>
+      <h1>{{ tool.name }}</h1>
+    </div>
+    <span class="status-pill" id="statusPill" data-state="queued">
+      <span class="status-dot"></span>
+      <span id="statusLabel">Queued</span>
+    </span>
+  </div>
+
+  <div class="console">
+    <div class="console-bar">
+      <span class="console-dot dot-r"></span>
+      <span class="console-dot dot-y"></span>
+      <span class="console-dot dot-g"></span>
+      <span class="console-title">run log</span>
+    </div>
+    <pre id="logBox" class="console-body"></pre>
+  </div>
+
+  <div id="downloadArea" class="download-area" style="display:none;">
+    <h3>Output files ready</h3>
+    <div id="fileLinks" class="file-links"></div>
+  </div>
+
+  <script>
+    const jobId = {{ job_id | tojson }};
+    const logBox = document.getElementById("logBox");
+    const statusPill = document.getElementById("statusPill");
+    const statusLabel = document.getElementById("statusLabel");
+    const downloadArea = document.getElementById("downloadArea");
+    const fileLinks = document.getElementById("fileLinks");
+    let lastLen = 0;
+    let stopped = false;
+
+    const STATUS_TEXT = {
+      queued: "Queued",
+      running: "Running",
+      done: "Done",
+      error: "Failed"
+    };
+
+    async function poll() {
+      if (stopped) return;
+      try {
+        const res = await fetch(`/job/${jobId}/status`);
+        const data = await res.json();
+
+        statusPill.dataset.state = data.status;
+        statusLabel.textContent = STATUS_TEXT[data.status] || data.status;
+
+        if (data.logs.length > lastLen) {
+          const newLines = data.logs.slice(lastLen).join("\n");
+          logBox.textContent += (lastLen > 0 ? "\n" : "") + newLines;
+          lastLen = data.logs.length;
+          logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        if (data.status === "running" || data.status === "queued") {
+          setTimeout(poll, 1000);
+        } else if (data.status === "done") {
+          stopped = true;
+          if (data.files && data.files.length) {
+            downloadArea.style.display = "block";
+            fileLinks.innerHTML = "";
+            data.files.forEach((fname, i) => {
+              const href = `/job/${jobId}/download/${encodeURIComponent(fname)}`;
+              const a = document.createElement("a");
+              a.href = href;
+              a.className = "download-btn";
+              a.innerHTML = "&#8595; " + fname;
+              fileLinks.appendChild(a);
+
+              if (data.auto_download) {
+                // Stagger downloads slightly so the browser doesn't
+                // treat a burst of simultaneous downloads as spam.
+                setTimeout(() => {
+                  const trigger = document.createElement("a");
+                  trigger.href = href;
+                  trigger.download = fname;
+                  document.body.appendChild(trigger);
+                  trigger.click();
+                  trigger.remove();
+                }, i * 350);
+              }
+            });
+            if (data.auto_download) {
+              const note = document.createElement("div");
+              note.className = "auto-download-note";
+              note.textContent = "Auto-downloading files… if your browser blocked it, use the links below.";
+              downloadArea.insertBefore(note, fileLinks);
+            }
+          }
+        } else if (data.status === "error") {
+          stopped = true;
+        }
+      } catch (e) {
+        setTimeout(poll, 1500);
+      }
+    }
+    poll();
+  </script>
+{% endblock %}

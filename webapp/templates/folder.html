@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }}{% endblock %}
+{% block content %}
+  <a href="{{ url_for('index') }}" class="back-link">&larr; All tools</a>
+
+  <section class="hero">
+    <div class="eyebrow">{{ group.stage }}</div>
+    <h1 class="display">{{ group.name }}</h1>
+    <p class="lead">{{ group.description }}</p>
+  </section>
+
+  <div class="stage-grid">
+    {% for tool_id, tool in tools.items() %}
+      <a class="stage-card" href="{{ url_for('tool_page', tool_id=tool_id) }}">
+        <div class="stage-top">
+          <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
+          <span class="stage-icon">{{ tool.icon|safe }}</span>
+        </div>
+        <div class="stage-label">{{ tool.stage }}</div>
+        <h2>{{ tool.name }}</h2>
+        <p>{{ tool.description }}</p>
+        {% if tool.windows_only %}
+          <span class="badge">Requires Windows + Photoshop</span>
+        {% endif %}
+        <span class="stage-cta">Open &rarr;</span>
+      </a>
+    {% endfor %}
+  </div>
+{% endblock %}

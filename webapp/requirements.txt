@@ -1,0 +1,27 @@
+flask
+gunicorn
+requests
+pandas
+beautifulsoup4
+lxml
+openpyxl
+pillow
+werkzeug
+psd-tools
+
+# Optional — only needed by Photoroom Lite (AI background removal).
+# The first run downloads an AI model (~170 MB), so needs internet access once.
+# rembg alone does NOT include a working backend — install the [cpu] extra
+# (or [gpu] if this machine has an NVIDIA GPU + CUDA set up) or it will fail
+# with "No onnxruntime backend found."
+# rembg[cpu]
+# scipy
+# numpy
+
+# Optional — only needed by the Product Image Scraper for othoba.com / pickaboo.com
+# selenium
+# (also requires a matching ChromeDriver: https://googlechromelabs.github.io/chrome-for-testing/)
+
+# Optional — only needed by Custom Positioned Sticker / Price Insert and
+# Top Deal Sticker Remover, and ONLY works on Windows with Adobe Photoshop installed
+# pywin32

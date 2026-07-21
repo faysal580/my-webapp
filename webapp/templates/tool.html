@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}{{ tool.name }}{% endblock %}
+{% block content %}
+  <a href="{{ url_for('index') }}" class="back-link">&larr; All tools</a>
+
+  <div class="tool-header">
+    <span class="tool-icon">{{ tool.icon|safe }}</span>
+    <div>
+      <div class="stage-label">{{ tool.stage }}</div>
+      <h1>{{ tool.name }}</h1>
+    </div>
+  </div>
+  <p class="lead tool-desc">{{ tool.description }}</p>
+  {% if tool.windows_only %}
+    <div class="notice">&#9888; This tool only works on <strong>Windows</strong> with Adobe Photoshop installed.</div>
+  {% endif %}
+
+  <form class="tool-form" action="{{ url_for('tool_run', tool_id=tool_id) }}" method="post" enctype="multipart/form-data">
+    {% for field in tool.fields %}
+      <div class="form-row{% if field.type == 'checkbox' %} checkbox-row{% endif %}">
+        {% if field.type == "checkbox" %}
+          <label class="checkbox-label" for="{{ field.key }}">
+            <input type="checkbox" id="{{ field.key }}" name="{{ field.key }}"
+                   {% if field.default %}checked{% endif %}>
+            <span>{{ field.label }}</span>
+          </label>
+          {% if field.hint %}<div class="field-hint">{{ field.hint }}</div>{% endif %}
+        {% else %}
+        <label for="{{ field.key }}">
+          {{ field.label }}{% if field.required %} <span class="req">*</span>{% endif %}
+        </label>
+
+        {% if field.type in ("file", "files") %}
+          <div class="dropzone" data-input="{{ field.key }}">
+            <input type="file" id="{{ field.key }}" name="{{ field.key }}"
+                   accept="{{ field.accept or '' }}"
+                   {% if field.type == 'files' %}multiple{% endif %}
+                   {% if field.required %}required{% endif %}>
+            <div class="dropzone-inner">
+              <span class="dropzone-icon">&#8593;</span>
+              <span class="dropzone-text">Drag a file here or <strong>browse</strong></span>
+              <span class="dropzone-filename"></span>
+            </div>
+          </div>
+        {% elif field.type == "number" %}
+          <input type="number" class="text-input" id="{{ field.key }}" name="{{ field.key }}"
+                 value="{{ field.default }}">
+        {% elif field.type == "textarea" %}
+          <textarea class="text-input textarea-input" id="{{ field.key }}" name="{{ field.key }}"
+                    rows="5" placeholder="{{ field.placeholder or '' }}">{{ field.default or '' }}</textarea>
+        {% elif field.type == "layer_select" %}
+          <div class="layer-select" data-source="{{ field.source_field }}" data-default="{{ field.default or '' }}">
+            <input type="hidden" id="{{ field.key }}" name="{{ field.key }}" value="{{ field.default or '' }}">
+            <div class="layer-hint">Select the template PSD above to load its layers…</div>
+            <div class="layer-options"></div>
+          </div>
+        {% endif %}
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <button type="submit" class="run-btn">
+      <span class="run-icon">&#9654;</span> Run
+    </button>
+  </form>
+
+  <script>
+    document.querySelectorAll(".dropzone").forEach(function(zone) {
+      const input = zone.querySelector("input[type=file]");
+      const label = zone.querySelector(".dropzone-filename");
+
+      function updateLabel() {
+        if (input.files.length === 0) {
+          label.textContent = "";
+        } else if (input.files.length === 1) {
+          label.textContent = input.files[0].name;
+        } else {
+          label.textContent = input.files.length + " files selected";
+        }
+      }
+
+      input.addEventListener("change", updateLabel);
+
+      zone.addEventListener("dragover", function(e) {
+        e.preventDefault();
+        zone.classList.add("dragging");
+      });
+      zone.addEventListener("dragleave", function() {
+        zone.classList.remove("dragging");
+      });
+      zone.addEventListener("drop", function(e) {
+        e.preventDefault();
+        zone.classList.remove("dragging");
+        if (e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          updateLabel();
+        }
+      });
+    });
+
+    // ── Dynamic layer picker ──────────────────────────────────────────
+    // Whenever the source PSD input changes, ask the server which layers
+    // actually exist in that file right now (so newly-added layers show
+    // up automatically) and render them as selectable chips.
+    document.querySelectorAll(".layer-select").forEach(function(box) {
+      const sourceKey = box.dataset.source;
+      const defaultLayer = (box.dataset.default || "").toLowerCase();
+      const sourceInput = document.getElementById(sourceKey);
+      const hiddenInput = box.querySelector("input[type=hidden]");
+      const hint = box.querySelector(".layer-hint");
+      const optionsBox = box.querySelector(".layer-options");
+      if (!sourceInput) return;
+
+      function selectLayer(name) {
+        hiddenInput.value = name;
+        optionsBox.querySelectorAll(".layer-chip").forEach(function(chip) {
+          chip.classList.toggle("selected", chip.dataset.layer === name);
+        });
+      }
+
+      function renderOptions(layers) {
+        optionsBox.innerHTML = "";
+        if (!layers.length) {
+          hint.textContent = "No layers found in this template.";
+          hiddenInput.value = "";
+          return;
+        }
+        hint.textContent = "Choose which layer to use:";
+        layers.forEach(function(name) {
+          const chip = document.createElement("span");
+          chip.className = "layer-chip";
+          chip.textContent = name;
+          chip.dataset.layer = name;
+          chip.addEventListener("click", function() { selectLayer(name); });
+          optionsBox.appendChild(chip);
+        });
+        const preferred = layers.find(function(n) { return n.toLowerCase() === defaultLayer; });
+        selectLayer(preferred || layers[0]);
+      }
+
+      sourceInput.addEventListener("change", function() {
+        optionsBox.innerHTML = "";
+        hiddenInput.value = "";
+        if (!sourceInput.files.length) {
+          hint.textContent = "Select the template PSD above to load its layers…";
+          return;
+        }
+        hint.textContent = "Reading layers from template…";
+
+        const formData = new FormData();
+        formData.append("template_psd", sourceInput.files[0]);
+
+        fetch("{{ url_for('tool_psd_layers', tool_id=tool_id) }}", {
+          method: "POST",
+          body: formData,
+        })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.error) {
+              hint.textContent = "⚠ " + data.error;
+              return;
+            }
+            renderOptions(data.layers || []);
+          })
+          .catch(function() {
+            hint.textContent = "⚠ Could not read layers from this file.";
+          });
+      });
+    });
+  </script>
+{% endblock %}
