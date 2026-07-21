@@ -198,6 +198,9 @@ TOOLS = {
             {"key": "images", "type": "files", "label": "Images", "accept": "image/*", "required": True},
             {"key": "template_psd", "type": "file", "label": "Campaign template PSD", "accept": ".psd", "required": True},
             {"key": "prices_csv", "type": "file", "label": "Prices CSV (filename, price)", "accept": ".csv", "required": True},
+            {"key": "layers_to_keep", "type": "multi_layer_select", "label": "Layers to keep visible",
+             "source_field": "template_psd", "default": "", "required": False,
+             "hint": "The 'image' layer and the price text are always kept. Every other top-level layer not selected here will be turned off."},
             {"key": "target_width", "type": "number", "label": "Target box width", "default": 980},
             {"key": "target_height", "type": "number", "label": "Target box height", "default": 735},
             {"key": "target_x", "type": "number", "label": "Target box X", "default": 50},
@@ -461,6 +464,19 @@ def tool_run(tool_id):
             raw = request.form.get(key)
             default = field.get("default", "")
             value = raw.strip() if raw and raw.strip() else default
+            if field.get("required") and not value:
+                shutil.rmtree(job_dir, ignore_errors=True)
+                with JOBS_LOCK:
+                    del JOBS[job_id]
+                return f"Field '{field['label']}' is required.", 400
+            kwargs[key] = value
+
+        elif ftype == "multi_layer_select":
+            raw = request.form.get(key) or ""
+            value = [name.strip() for name in raw.split(",") if name.strip()]
+            if not value:
+                default = field.get("default", "")
+                value = [name.strip() for name in default.split(",") if name.strip()]
             if field.get("required") and not value:
                 shutil.rmtree(job_dir, ignore_errors=True)
                 with JOBS_LOCK:
