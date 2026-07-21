@@ -34,7 +34,8 @@ def _load_price_map(csv_path: Path, log):
 
 def _find_and_update_price(doc, new_price):
     """Find the first text layer containing 'Tk.' (top-level, or one level
-    into a layer group) and update the number after it."""
+    into a layer group), update the number after it, and return the
+    top-level layer that holds it (so callers can keep it visible)."""
     formatted_price = new_price.replace(".", ",") if "." in new_price else new_price
 
     def try_layer(layer):
@@ -53,13 +54,28 @@ def _find_and_update_price(doc, new_price):
         if layer.Kind == 1:  # layer group
             for sub_layer in layer.Layers:
                 if try_layer(sub_layer):
-                    return True
+                    return layer  # top-level group that owns the price text
         elif try_layer(layer):
-            return True
-    return False
+            return layer  # top-level text layer itself
+    return None
+
+
+def _apply_layer_visibility(doc, layers_to_keep, price_layer):
+    """Hide every top-level layer except 'image', the price layer/group,
+    and whatever the user chose to keep visible."""
+    keep_lower = {name.strip().lower() for name in (layers_to_keep or []) if name.strip()}
+    for layer in doc.Layers:
+        if layer.Name.lower() == "image":
+            layer.Visible = True
+            continue
+        if price_layer is not None and layer.Name == price_layer.Name:
+            layer.Visible = True
+            continue
+        layer.Visible = layer.Name.lower() in keep_lower
 
 
 def run(images, template_psd: Path, prices_csv: Path, output_dir: Path, log,
+        layers_to_keep=None,
         target_width=980, target_height=735, target_x=50, target_y=325, jpeg_quality=12):
     try:
         import win32com.client
@@ -143,8 +159,11 @@ def run(images, template_psd: Path, prices_csv: Path, output_dir: Path, log,
             offset_y = target_y + (target_height - new_height) / 2 - new_y
             placed_layer.Translate(offset_x, offset_y)
 
-            if not _find_and_update_price(doc, price):
+            price_layer = _find_and_update_price(doc, price)
+            if price_layer is None:
                 log("⚠️ Could not find price text in the template (looking for 'Tk.' in text layers)")
+
+            _apply_layer_visibility(doc, layers_to_keep, price_layer)
 
             jpg_options = win32com.client.Dispatch("Photoshop.JPEGSaveOptions")
             jpg_options.Quality = jpeg_quality
