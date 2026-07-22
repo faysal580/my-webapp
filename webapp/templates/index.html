@@ -15,8 +15,13 @@
       <rect x="188" y="70" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.4"/>
     </svg>
     <div class="eyebrow">local automation console</div>
-    <h1 class="display">Product <span class="accent">Visualizer</span></h1>
-    <p class="lead">From link scraping to the final sticker placement — several stages, one browser tab. Upload your file, hit Run, download the result.</p>
+    {% if active_stage %}
+      <h1 class="display">{{ active_stage.title() }} <span class="accent">Tools</span></h1>
+      <p class="lead">Showing only the {{ active_stage.lower() }} tools. <a href="{{ url_for('index') }}">View all tools &rarr;</a></p>
+    {% else %}
+      <h1 class="display">Product <span class="accent">Visualizer</span></h1>
+      <p class="lead">From link scraping to the final sticker placement — several stages, one browser tab. Upload your file, hit Run, download the result.</p>
+    {% endif %}
   </section>
 
   <div class="stage-grid">
