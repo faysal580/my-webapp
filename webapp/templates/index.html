@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Visual Team Console{% endblock %}
+{% block body_class %}{% if not active_stage %}is-dashboard{% endif %}{% endblock %}
 {% block content %}
+{% if active_stage %}
   <section class="hero">
     <svg class="hero-art" viewBox="0 0 220 160" fill="none" aria-hidden="true">
       <rect x="10" y="18" width="16" height="16" rx="3" fill="var(--accent-text)" opacity="0.75"/>
@@ -15,23 +17,14 @@
       <rect x="188" y="70" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.4"/>
     </svg>
     <div class="eyebrow">local automation console</div>
-    {% if active_stage %}
-      <h1 class="display">{{ active_stage.title() }} <span class="accent">Tools</span></h1>
-      <p class="lead">Showing only the {{ active_stage.lower() }} tools. <a href="{{ url_for('index') }}">View all tools &rarr;</a></p>
-    {% else %}
-      <h1 class="display">Product <span class="accent">Visualizer</span></h1>
-      <p class="lead">From link scraping to the final sticker placement — several stages, one browser tab. Upload your file, hit Run, download the result.</p>
-    {% endif %}
+    <h1 class="display">{{ active_stage.title() }} <span class="accent">Tools</span></h1>
+    <p class="lead">Showing only the {{ active_stage.lower() }} tools. <a href="{{ url_for('index') }}">View all tools &rarr;</a></p>
   </section>
 
   <div class="stage-grid">
-    {% set ns = namespace(prev_stage=None, color_i=0) %}
     {% for entry in display_items %}
-      {% set is_new_stage = entry.item.stage != ns.prev_stage %}
-      {% set anchor_id = "stage-" ~ entry.item.stage|lower if is_new_stage else "" %}
-      {% set ns.prev_stage = entry.item.stage %}
       {% if entry.kind == "group" %}
-        <a {% if anchor_id %}id="{{ anchor_id }}"{% endif %} class="stage-card stage-card-folder" href="{{ url_for('folder_page', group_id=entry.id) }}">
+        <a class="stage-card stage-card-folder" href="{{ url_for('folder_page', group_id=entry.id) }}">
           <div class="stage-top">
             <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
             <span class="stage-icon">{{ entry.item.icon|safe }}</span>
@@ -42,9 +35,8 @@
           <span class="stage-cta">Open folder &rarr;</span>
         </a>
       {% else %}
-        {% set card_color = "card-c" ~ (ns.color_i % 5) %}
-        {% set ns.color_i = ns.color_i + 1 %}
-        <a {% if anchor_id %}id="{{ anchor_id }}"{% endif %} class="stage-card {{ card_color }}" href="{{ url_for('tool_page', tool_id=entry.id) }}">
+        {% set card_color = "card-c" ~ (loop.index0 % 5) %}
+        <a class="stage-card {{ card_color }}" href="{{ url_for('tool_page', tool_id=entry.id) }}">
           <div class="stage-top">
             <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
             <span class="stage-icon">{{ entry.item.icon|safe }}</span>
@@ -60,4 +52,197 @@
       {% endif %}
     {% endfor %}
   </div>
+
+{% else %}
+
+  <section class="dash-welcome">
+    <div class="dash-welcome-text">
+      <p class="dash-welcome-greet">Welcome back, {{ session.get('user', 'there') }} <span class="wave">👋</span></p>
+      <h1 class="display">Product <span class="accent">Visualizer</span></h1>
+      <p class="lead">From link scraping to the final sticker placement — several stages, one browser tab. Upload your file, hit Run, download the result.</p>
+    </div>
+    <svg class="hero-art dash-welcome-art" viewBox="0 0 220 160" fill="none" aria-hidden="true">
+      <rect x="10" y="18" width="16" height="16" rx="3" fill="var(--accent-text)" opacity="0.75"/>
+      <rect x="34" y="8" width="16" height="16" rx="3" fill="var(--accent)" opacity="0.5"/>
+      <rect x="10" y="44" width="16" height="16" rx="3" fill="var(--accent)" opacity="0.3"/>
+      <rect x="58" y="30" width="12" height="12" rx="3" fill="var(--accent-2)" opacity="0.5"/>
+      <g transform="translate(120 10) rotate(18 40 60)">
+        <path d="M40 10 L64 55 L50 55 L50 100 L30 100 L30 55 L16 55 Z" fill="var(--accent-2)"/>
+        <rect x="24" y="96" width="32" height="16" rx="4" fill="#1c2233"/>
+      </g>
+      <circle cx="205" cy="30" r="4" fill="var(--accent-text)"/>
+      <rect x="188" y="70" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.4"/>
+    </svg>
+  </section>
+
+  <div class="stat-row">
+    {% for s in dash.stats %}
+      <div class="stat-card stat-{{ s.color }}">
+        <div class="stat-icon">{{ icons[s.icon]|safe }}</div>
+        <div class="stat-body">
+          <div class="stat-label">{{ s.label }}</div>
+          <div class="stat-value">{{ s.value }}</div>
+          <div class="stat-sub {% if 'Excellent' in s.sub %}is-good{% endif %}">{{ s.sub }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="dashboard-main">
+
+      <div class="panel-card">
+        <div class="panel-header">
+          <h3>Quick Access Tools</h3>
+          <a class="panel-link" href="{{ url_for('index') }}">View all tools &rarr;</a>
+        </div>
+        <div class="stage-grid stage-grid-compact">
+          {% for entry in display_items %}
+            {% if entry.kind == "group" %}
+              <a class="stage-card stage-card-folder" href="{{ url_for('folder_page', group_id=entry.id) }}">
+                <div class="stage-top">
+                  <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
+                  <span class="stage-icon">{{ entry.item.icon|safe }}</span>
+                </div>
+                <div class="stage-label">{{ entry.item.stage }}</div>
+                <h2>{{ entry.item.name }}</h2>
+                <p>{{ entry.item.description }}</p>
+                <span class="stage-cta">Open folder &rarr;</span>
+              </a>
+            {% else %}
+              {% set card_color = "card-c" ~ (loop.index0 % 5) %}
+              <a class="stage-card {{ card_color }}" href="{{ url_for('tool_page', tool_id=entry.id) }}">
+                <div class="stage-top">
+                  <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
+                  <span class="stage-icon">{{ entry.item.icon|safe }}</span>
+                </div>
+                <div class="stage-label">{{ entry.item.stage }}</div>
+                <h2>{{ entry.item.name }}</h2>
+                <p>{{ entry.item.description }}</p>
+                {% if entry.item.windows_only %}
+                  <span class="badge">Requires Windows + Photoshop</span>
+                {% endif %}
+                <span class="stage-cta">Open &rarr;</span>
+              </a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="dash-row-2col">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3>Weekly Overview</h3>
+            <span class="panel-pill">Last 7 Days</span>
+          </div>
+          <div class="chart-legend">
+            <span><i class="dot dot-accent2"></i>Tasks Completed (max {{ dash.task_max }})</span>
+            <span><i class="dot dot-accent"></i>Files Processed, GB (max {{ dash.gb_max }})</span>
+          </div>
+          {% if dash.has_activity %}
+          <svg class="week-chart" viewBox="0 0 460 220" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="30" y1="20" x2="30" y2="180" stroke="var(--border)" stroke-width="1"/>
+            <line x1="30" y1="180" x2="450" y2="180" stroke="var(--border)" stroke-width="1"/>
+            {% for gy in [20, 60, 100, 140, 180] %}
+              <line x1="30" y1="{{ gy }}" x2="450" y2="{{ gy }}" stroke="var(--border-soft)" stroke-width="1"/>
+            {% endfor %}
+            <path d="{{ dash.task_path }}" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="{{ dash.gb_path }}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            {% for pt in dash.task_points %}
+              <circle cx="{{ pt[0] }}" cy="{{ pt[1] }}" r="3.5" fill="var(--accent-2)"/>
+            {% endfor %}
+            {% for pt in dash.gb_points %}
+              <circle cx="{{ pt[0] }}" cy="{{ pt[1] }}" r="3.5" fill="var(--accent)"/>
+            {% endfor %}
+            {% for lbl in dash.weekly_labels %}
+              <text x="{{ 45 + loop.index0 * 60 }}" y="202" class="chart-axis-label chart-axis-label-x" text-anchor="middle">{{ lbl }}</text>
+            {% endfor %}
+          </svg>
+          {% else %}
+            <p class="empty-note">No jobs run yet this week — run a tool and this chart fills in.</p>
+          {% endif %}
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3>Top Tools Used</h3>
+            <span class="panel-pill">All-time</span>
+          </div>
+          {% if dash.top_tools %}
+          <div class="progress-list">
+            {% for t in dash.top_tools %}
+              <div class="progress-item">
+                <div class="progress-icon">{{ icons[t.icon]|safe }}</div>
+                <div class="progress-body">
+                  <div class="progress-top"><span>{{ t.name }}</span><span>{{ t.count }}</span></div>
+                  <div class="progress-track"><div class="progress-fill" style="width: {{ t.pct }}%;"></div></div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          {% else %}
+            <p class="empty-note">No completed jobs yet — this fills in once tools have been run.</p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <div class="dashboard-side">
+
+      <div class="panel-card">
+        <div class="panel-header"><h3>System Status</h3></div>
+        <ul class="status-list">
+          {% for s in dash.system_status %}
+            <li><span class="status-dot {% if s.state != 'Online' %}status-dot-warn{% endif %}"></span><span class="status-name">{{ s.name }}</span><span class="status-state {% if s.state != 'Online' %}status-state-warn{% endif %}">{{ s.state }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-header">
+          <h3>Recent Activity</h3>
+        </div>
+        {% if dash.recent_activity %}
+        <ul class="activity-list">
+          {% for a in dash.recent_activity %}
+            <li>
+              <span class="activity-icon {% if a.status == 'error' %}activity-icon-error{% endif %}">{{ icons[a.icon]|safe }}</span>
+              <div>
+                <div class="activity-name">{{ a.name }}</div>
+                <div class="activity-meta">{{ a.meta }}</div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+          <p class="empty-note">Nothing run yet — jobs you complete will show up here.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-header"><h3>Storage Usage</h3></div>
+        <div class="donut-row">
+          <div class="donut" style="--pct: {{ dash.storage_pct }};">
+            <span class="donut-pct">{{ dash.storage_pct }}%<small>Used</small></span>
+          </div>
+          <div class="donut-legend">
+            <div class="donut-legend-total">Total Storage<strong>{{ dash.storage_total_gb }} GB</strong></div>
+            <div><span class="dot dot-accent2"></span>Used <strong>{{ dash.storage_used_gb }} GB</strong></div>
+            <div><span class="dot dot-accent"></span>Free <strong>{{ dash.storage_total_gb - dash.storage_used_gb }} GB</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="need-help-card">
+        <h3>Need Help?</h3>
+        <p>Explore our documentation or contact support for assistance.</p>
+        <a class="btn-help-primary" href="https://github.com" target="_blank" rel="noopener">View Documentation</a>
+        <a class="btn-help-secondary" href="mailto:support@cartupbd.com">Contact Support</a>
+      </div>
+
+    </div>
+  </div>
+
+{% endif %}
 {% endblock %}
