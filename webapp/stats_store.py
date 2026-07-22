@@ -1,27 +1,86 @@
 """
-Lightweight persistent job-history log used to power the dashboard's
-real usage stats (tasks completed, files processed, top tools, recent
-activity, weekly trend).
+Persistent job-history log used to power the dashboard's real usage stats
+(tasks completed, files processed, top tools, recent activity, weekly
+trend).
 
-Stored as a plain JSON-lines file on local disk — one line per finished
-job. This is intentionally simple (no DB needed for a single-user local
-console). Note: on hosts with ephemeral disks (e.g. a Render free-tier
-web service), this file resets on redeploy, same as the in-memory JOBS
-dict already did — it's durable across ordinary restarts/requests, just
-not across a redeploy that wipes the disk.
+Backed by GitHub (via github_store.py) when GITHUB_TOKEN + GITHUB_REPO are
+set — same pattern as profiles.py — so the history survives Render
+redeploys instead of living only on the ephemeral disk. Falls back to a
+local JSON file under data/ when those env vars aren't set (fine for
+local testing, but that copy is lost on the next Render redeploy).
+
+The log is capped at MAX_HISTORY_ENTRIES (oldest entries are dropped) so
+the file — and the GitHub commit it round-trips on every save — doesn't
+grow without bound. That's plenty for "this week" charts and a "top
+tools" ranking; it just means very old entries eventually age out of the
+all-time totals too.
 """
 import json
 import threading
 import time
 from pathlib import Path
 
+import github_store
+
 BASE_DIR = Path(__file__).resolve().parent
-HISTORY_FILE = BASE_DIR / "data" / "job_history.jsonl"
-_LOCK = threading.Lock()
+
+HISTORY_PATH = "data/job_history.json"          # path inside the repo's data branch
+LOCAL_HISTORY_FILE = BASE_DIR / "data" / "job_history.json"
+
+MAX_HISTORY_ENTRIES = 1000
 
 # Rough, clearly-labeled estimate of manual effort a single automated job
 # replaces (used only for the "Time Saved" stat). Adjust freely.
 MINUTES_SAVED_PER_JOB = 6
+
+_LOCK = threading.Lock()
+# Short-lived in-memory cache so a burst of dashboard page loads doesn't
+# each hit the GitHub API — refreshed automatically after every write and
+# after CACHE_TTL seconds.
+_cache = {"data": None, "ts": 0}
+CACHE_TTL = 15
+
+
+def use_github():
+    return github_store._configured()
+
+
+def _read_raw():
+    if use_github():
+        content, _ = github_store.get_file(HISTORY_PATH)
+        if not content:
+            return []
+        try:
+            return json.loads(content.decode("utf-8"))
+        except ValueError:
+            return []
+    if LOCAL_HISTORY_FILE.exists():
+        try:
+            with open(LOCAL_HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return []
+    return []
+
+
+def _write_raw(entries):
+    if use_github():
+        data = json.dumps(entries, indent=2, ensure_ascii=False).encode("utf-8")
+        github_store.put_file(HISTORY_PATH, data, f"Log job history ({len(entries)} entries)")
+    else:
+        LOCAL_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(LOCAL_HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(entries, f, indent=2, ensure_ascii=False)
+
+
+def load_all():
+    now = time.time()
+    if _cache["data"] is not None and (now - _cache["ts"]) < CACHE_TTL:
+        return _cache["data"]
+    entries = _read_raw()
+    _cache["data"] = entries
+    _cache["ts"] = now
+    return entries
 
 
 def record_job(tool_id, tool_name, stage, status, output_bytes=0, file_count=0):
@@ -35,26 +94,14 @@ def record_job(tool_id, tool_name, stage, status, output_bytes=0, file_count=0):
         "output_bytes": output_bytes,
         "file_count": file_count,
     }
-    HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
     with _LOCK:
-        with open(HISTORY_FILE, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + "\n")
-
-
-def load_all():
-    if not HISTORY_FILE.exists():
-        return []
-    out = []
-    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                out.append(json.loads(line))
-            except ValueError:
-                continue
-    return out
+        entries = _read_raw()
+        entries.append(entry)
+        if len(entries) > MAX_HISTORY_ENTRIES:
+            entries = entries[-MAX_HISTORY_ENTRIES:]
+        _write_raw(entries)
+        _cache["data"] = entries
+        _cache["ts"] = time.time()
 
 
 def _time_ago(ts):
