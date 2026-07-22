@@ -2,15 +2,31 @@
 {% block title %}Visual Team Console{% endblock %}
 {% block content %}
   <section class="hero">
+    <svg class="hero-art" viewBox="0 0 220 160" fill="none" aria-hidden="true">
+      <rect x="10" y="18" width="16" height="16" rx="3" fill="var(--accent-text)" opacity="0.75"/>
+      <rect x="34" y="8" width="16" height="16" rx="3" fill="var(--accent)" opacity="0.5"/>
+      <rect x="10" y="44" width="16" height="16" rx="3" fill="var(--accent)" opacity="0.3"/>
+      <rect x="58" y="30" width="12" height="12" rx="3" fill="var(--accent-2)" opacity="0.5"/>
+      <g transform="translate(120 10) rotate(18 40 60)">
+        <path d="M40 10 L64 55 L50 55 L50 100 L30 100 L30 55 L16 55 Z" fill="var(--accent-2)"/>
+        <rect x="24" y="96" width="32" height="16" rx="4" fill="#1c2233"/>
+      </g>
+      <circle cx="205" cy="30" r="4" fill="var(--accent-text)"/>
+      <rect x="188" y="70" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.4"/>
+    </svg>
     <div class="eyebrow">local automation console</div>
     <h1 class="display">Product <span class="accent">Visualizer</span></h1>
     <p class="lead">From link scraping to the final sticker placement — several stages, one browser tab. Upload your file, hit Run, download the result.</p>
   </section>
 
   <div class="stage-grid">
+    {% set ns = namespace(prev_stage=None, color_i=0) %}
     {% for entry in display_items %}
+      {% set is_new_stage = entry.item.stage != ns.prev_stage %}
+      {% set anchor_id = "stage-" ~ entry.item.stage|lower if is_new_stage else "" %}
+      {% set ns.prev_stage = entry.item.stage %}
       {% if entry.kind == "group" %}
-        <a class="stage-card stage-card-folder" href="{{ url_for('folder_page', group_id=entry.id) }}">
+        <a {% if anchor_id %}id="{{ anchor_id }}"{% endif %} class="stage-card stage-card-folder" href="{{ url_for('folder_page', group_id=entry.id) }}">
           <div class="stage-top">
             <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
             <span class="stage-icon">{{ entry.item.icon|safe }}</span>
@@ -21,7 +37,9 @@
           <span class="stage-cta">Open folder &rarr;</span>
         </a>
       {% else %}
-        <a class="stage-card" href="{{ url_for('tool_page', tool_id=entry.id) }}">
+        {% set card_color = "card-c" ~ (ns.color_i % 5) %}
+        {% set ns.color_i = ns.color_i + 1 %}
+        <a {% if anchor_id %}id="{{ anchor_id }}"{% endif %} class="stage-card {{ card_color }}" href="{{ url_for('tool_page', tool_id=entry.id) }}">
           <div class="stage-top">
             <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
             <span class="stage-icon">{{ entry.item.icon|safe }}</span>
