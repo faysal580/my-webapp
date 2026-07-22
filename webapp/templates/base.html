@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <header class="topbar">
     <a href="{{ url_for('index') }}" class="brand">
       <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cartup Visual Team" class="brand-logo">
