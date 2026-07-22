@@ -35,6 +35,7 @@ from auth import (
     delete_user as auth_delete_user,
 )
 import profiles
+import stats_store
 from processors import (
     scraper, resizer, price_insert,
     single_link_downloader, multi_link_downloader, original_ratio_downloader,
@@ -269,6 +270,9 @@ ICONS = {
     "folder": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5a1.5 1.5 0 0 1 1.5-1.5H9l2 2.2h8a1.5 1.5 0 0 1 1.5 1.5V17.5A1.5 1.5 0 0 1 19 19H4.5A1.5 1.5 0 0 1 3 17.5Z"/></svg>',
     "eraser": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 13.5 9 4 3.5 9.5a2 2 0 0 0 0 2.8L9.7 18.5H20"/><path d="M12.5 8 6 14.5"/></svg>',
     "wand": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9"/><path d="M15 9 18 6"/><path d="M11 4v2.2"/><path d="M4.5 8.5h2.2"/><path d="M17 2v2.2"/><path d="M20.5 5.5h2.2"/><path d="M18.5 15.5v2.2"/><path d="M22 18.7h-2.2"/></svg>',
+    "briefcase": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7.5" width="18" height="12" rx="2"/><path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5"/><line x1="3" y1="12.5" x2="21" y2="12.5"/></svg>',
+    "check": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.6 2.6L16.3 9"/></svg>',
+    "clock": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>',
 }
 
 TOOLS = {
@@ -529,6 +533,9 @@ def run_job(job_id, tool_id, form_kwargs):
             job["status"] = "done"
         log("")
         log("✅ Finished.")
+        output_bytes = sum((output_dir / n).stat().st_size for n in rel_names if (output_dir / n).exists())
+        stats_store.record_job(tool_id, tool["name"], tool["stage"], "done",
+                                output_bytes=output_bytes, file_count=len(rel_names))
     except Exception as e:
         log("")
         log(f"❌ Error: {e}")
@@ -536,11 +543,134 @@ def run_job(job_id, tool_id, form_kwargs):
         with JOBS_LOCK:
             job["status"] = "error"
             job["error"] = str(e)
+        stats_store.record_job(tool_id, tool["name"], tool["stage"], "error")
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # Routes
 # ──────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
+# Dashboard summary data (shown on the main "/" landing view only).
+# Backed by stats_store's persistent job-history log, plus real disk usage
+# for the storage widget. See stats_store.py's module docstring for the
+# one caveat: this resets if the host's disk is wiped on redeploy (e.g. a
+# free-tier Render service), same as the job list already did.
+# ──────────────────────────────────────────────────────────────────────────
+STAGE_ICON_KEYS = {
+    "SCRAPE": "search", "DOWNLOAD": "download", "RESIZE": "expand",
+    "TAG": "tag", "CROP": "eraser", "CUTOUT": "wand",
+}
+
+# Chart drawing area, matches the viewBox used in index.html.
+_CHART_X0, _CHART_X1 = 45, 405
+_CHART_Y_TOP, _CHART_Y_BOTTOM = 20, 180
+
+
+def _scale_series(values):
+    """Map a list of numbers onto chart y-pixels (own min/max scale)."""
+    lo, hi = min(values), max(values)
+    if hi <= 0:
+        hi = 1
+    span = (hi - lo) or 1
+    n = len(values)
+    step = (_CHART_X1 - _CHART_X0) / (n - 1) if n > 1 else 0
+    points = []
+    for i, v in enumerate(values):
+        x = _CHART_X0 + step * i
+        frac = (v - lo) / span
+        y = _CHART_Y_BOTTOM - frac * (_CHART_Y_BOTTOM - _CHART_Y_TOP)
+        points.append((round(x, 1), round(y, 1)))
+    return points
+
+
+def build_dashboard_context():
+    total_tools = len(TOOLS)
+    s = stats_store.get_dashboard_stats()
+
+    if s["total_jobs"] == 0:
+        tasks_sub = "No jobs run yet"
+        files_sub = "No jobs run yet"
+        saved_sub = "No jobs run yet"
+        rate_value = "\u2014"
+        rate_sub = "Run a tool to see this"
+    else:
+        tasks_sub = f"{s['total_jobs']} runs all-time"
+        files_sub = "All-time total"
+        saved_sub = f"Est. @ {stats_store.MINUTES_SAVED_PER_JOB} min/job"
+        rate_value = f"{s['success_rate']:.1f}%"
+        rate_sub = "Excellent" if s["success_rate"] >= 95 else ("Good" if s["success_rate"] >= 80 else "Needs attention")
+
+    stats = [
+        {"label": "Total Tools", "value": str(total_tools), "sub": "Active tools", "icon": "briefcase", "color": "c1"},
+        {"label": "Tasks Completed", "value": f"{s['total_done']:,}", "sub": tasks_sub, "icon": "check", "color": "c3"},
+        {"label": "Files Processed", "value": f"{s['total_gb']:.2f} GB", "sub": files_sub, "icon": "folder", "color": "c0"},
+        {"label": "Time Saved", "value": f"{s['time_saved_hours']:.1f} hrs", "sub": saved_sub, "icon": "clock", "color": "c2"},
+        {"label": "Success Rate", "value": rate_value, "sub": rate_sub, "icon": "check", "color": "c3"},
+    ]
+
+    # System status: flag a stage "degraded" only if its most recent job failed.
+    all_entries = stats_store.load_all()
+
+    def _stage_state(stages):
+        matches = [e for e in all_entries if e.get("stage") in stages]
+        if not matches:
+            return "Online"
+        latest = max(matches, key=lambda e: e["ts"])
+        return "Degraded" if latest["status"] == "error" else "Online"
+
+    system_status = [
+        {"name": "Scraper Engine", "state": _stage_state({"SCRAPE"})},
+        {"name": "Downloader", "state": _stage_state({"DOWNLOAD"})},
+        {"name": "Image Processor", "state": _stage_state({"RESIZE", "TAG", "CROP", "CUTOUT"})},
+    ]
+
+    # Real disk usage for the storage widget.
+    try:
+        du = shutil.disk_usage(BASE_DIR)
+        storage_total_gb = round(du.total / (1024 ** 3))
+        storage_used_gb = round(du.used / (1024 ** 3))
+        storage_pct = round(du.used / du.total * 100) if du.total else 0
+    except OSError:
+        storage_total_gb, storage_used_gb, storage_pct = 0, 0, 0
+    system_status.append({"name": "Storage", "state": "Low Space" if storage_pct >= 90 else "Online"})
+
+    recent_activity = [
+        {**a, "icon": STAGE_ICON_KEYS.get(a["stage"], "wand")} for a in s["recent_activity"]
+    ]
+    top_tools = [
+        {**t, "icon": STAGE_ICON_KEYS.get(t["stage"], "wand")} for t in s["top_tools"]
+    ]
+
+    # Weekly chart: two independently-scaled polylines (own min/max) so both
+    # series show visible movement even though their units differ (job
+    # counts vs. gigabytes).
+    weekly = s["weekly"]
+    task_values = [d["tasks"] for d in weekly]
+    gb_values = [d["gb"] for d in weekly]
+    task_points = _scale_series(task_values)
+    gb_points = _scale_series(gb_values)
+    task_path = "M" + " L".join(f"{x},{y}" for x, y in task_points)
+    gb_path = "M" + " L".join(f"{x},{y}" for x, y in gb_points)
+
+    return {
+        "stats": stats,
+        "system_status": system_status,
+        "recent_activity": recent_activity,
+        "top_tools": top_tools,
+        "storage_used_gb": storage_used_gb,
+        "storage_total_gb": storage_total_gb,
+        "storage_pct": storage_pct,
+        "weekly_labels": [d["label"] for d in weekly],
+        "task_points": task_points,
+        "gb_points": gb_points,
+        "task_path": task_path,
+        "gb_path": gb_path,
+        "task_max": max(task_values) if any(task_values) else 0,
+        "gb_max": round(max(gb_values), 2) if any(gb_values) else 0,
+        "has_activity": s["total_jobs"] > 0,
+    }
+
+
 @app.route("/")
 def index():
     grouped_ids = set()
@@ -564,7 +694,9 @@ def index():
         stage_filter = stage_filter.upper()
         display_items = [e for e in display_items if e["item"]["stage"] == stage_filter]
 
-    return render_template("index.html", display_items=display_items, active_stage=stage_filter)
+    dash_ctx = {} if stage_filter else build_dashboard_context()
+
+    return render_template("index.html", display_items=display_items, active_stage=stage_filter, dash=dash_ctx, icons=ICONS)
 
 
 @app.route("/folder/<group_id>")
