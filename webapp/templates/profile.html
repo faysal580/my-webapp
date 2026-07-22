@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Profile &middot; Visual Team Console{% endblock %}
+{% block content %}
+  <section class="profile-wrap">
+    <div class="profile-card">
+      <div class="eyebrow">my account</div>
+      <h1 class="login-title">Profile</h1>
+      <p class="lead login-lead">আপনার প্রোফাইল তথ্য এখান থেকে দেখুন এবং পরিবর্তন করুন।</p>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="login-error">{{ messages[0] }}</div>
+        {% endif %}
+      {% endwith %}
+
+      {% if not github_configured %}
+        <div class="profile-warning">
+          এই সার্ভারে GitHub storage কনফিগার করা নেই — তাই এখন যা সেভ করবেন তা পরের deploy-এ হারিয়ে যেতে পারে।
+        </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" class="login-form">
+        <div class="profile-avatar-row">
+          <img
+            class="profile-avatar-preview"
+            id="avatarPreview"
+            src="{{ url_for('avatar', username=username) if profile.avatar else url_for('static', filename='images/logo.png') }}"
+            alt="Avatar"
+          >
+          <div class="profile-avatar-actions">
+            <label class="download-btn profile-upload-btn" for="avatarInput">ছবি বদলান</label>
+            <input type="file" id="avatarInput" name="avatar" accept=".png,.jpg,.jpeg,.webp" hidden>
+            <span class="field-hint">PNG, JPG বা WEBP &middot; সর্বোচ্চ 4MB</span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Username</label>
+          <input class="text-input" type="text" value="{{ username }}" disabled>
+        </div>
+
+        <div class="form-row">
+          <label for="full_name">Full name</label>
+          <input class="text-input" type="text" id="full_name" name="full_name" value="{{ profile.full_name }}" placeholder="আপনার পুরো নাম">
+        </div>
+
+        <div class="form-row">
+          <label for="email">Email</label>
+          <input class="text-input" type="email" id="email" name="email" value="{{ profile.email }}" placeholder="you@example.com">
+        </div>
+
+        <div class="form-row">
+          <label for="bio">Bio</label>
+          <textarea class="textarea-input" id="bio" name="bio" rows="4" placeholder="নিজের সম্পর্কে সংক্ষেপে লিখুন">{{ profile.bio }}</textarea>
+        </div>
+
+        <button type="submit" class="run-btn login-btn">
+          <span>Save profile</span>
+          <span class="run-icon">&rarr;</span>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    document.getElementById("avatarInput").addEventListener("change", function (e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      document.getElementById("avatarPreview").src = URL.createObjectURL(file);
+    });
+  </script>
+{% endblock %}
