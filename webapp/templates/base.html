@@ -30,6 +30,9 @@
           <img class="topbar-avatar" src="{{ url_for('avatar', username=session.get('user')) }}" alt="" onerror="this.style.display='none'">
           {{ session.get('user') }}
         </a>
+        {% if session.get('is_admin') %}
+          <a class="topbar-logout" href="{{ url_for('admin_panel') }}">Admin</a>
+        {% endif %}
         <a class="topbar-logout" href="{{ url_for('logout') }}">Log out</a>
       {% endif %}
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light and dark theme">

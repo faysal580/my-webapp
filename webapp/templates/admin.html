@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Admin &middot; Visual Team Console{% endblock %}
+{% block content %}
+  <section class="admin-wrap">
+    <div class="eyebrow">owner controls</div>
+    <h1 class="login-title">Admin</h1>
+    <p class="lead login-lead">টিমের সব ইউজার এখান থেকে দেখুন, পাসওয়ার্ড রিসেট করুন, নতুন ইউজার যোগ করুন, বা কারো access বাদ দিন।</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="login-error admin-flash">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    {% if not github_configured %}
+      <div class="profile-warning">
+        GitHub storage কনফিগার করা নেই — এখানে যা করবেন তা পরের deploy-এ হারিয়ে যেতে পারে।
+      </div>
+    {% endif %}
+
+    <div class="admin-card">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Full name</th>
+            <th>Email</th>
+            <th>Reset password</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>
+              {{ u.username }}
+              {% if u.is_admin %}<span class="admin-badge">owner</span>{% endif %}
+              {% if u.username == current_user %}<span class="admin-badge admin-badge-you">you</span>{% endif %}
+            </td>
+            <td>{{ u.full_name or "—" }}</td>
+            <td>{{ u.email or "—" }}</td>
+            <td>
+              <form method="post" action="{{ url_for('admin_reset_password') }}" class="admin-inline-form">
+                <input type="hidden" name="username" value="{{ u.username }}">
+                <input class="text-input admin-inline-input" type="password" name="new_password" placeholder="নতুন পাসওয়ার্ড" minlength="4" required>
+                <button type="submit" class="download-btn admin-inline-btn">Reset</button>
+              </form>
+            </td>
+            <td>
+              {% if u.username != current_user %}
+              <form method="post" action="{{ url_for('admin_delete_user') }}" class="admin-inline-form" onsubmit="return confirm('{{ u.username }} কে ডিলিট করবেন? এই একাউন্ট আর লগইন করতে পারবে না।');">
+                <input type="hidden" name="username" value="{{ u.username }}">
+                <button type="submit" class="admin-delete-btn">Delete</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="profile-subtitle admin-add-title">নতুন ইউজার যোগ করুন</h2>
+    <div class="admin-card admin-add-card">
+      <form method="post" action="{{ url_for('admin_add_user') }}" class="login-form">
+        <div class="form-row">
+          <label for="new_username">Username</label>
+          <input class="text-input" type="text" id="new_username" name="username" required>
+        </div>
+        <div class="form-row">
+          <label for="new_user_password">Password</label>
+          <input class="text-input" type="password" id="new_user_password" name="password" minlength="4" required>
+        </div>
+        <div class="form-row">
+          <label for="new_full_name">Full name (ঐচ্ছিক)</label>
+          <input class="text-input" type="text" id="new_full_name" name="full_name">
+        </div>
+        <div class="form-row">
+          <label for="new_email">Email (ঐচ্ছিক)</label>
+          <input class="text-input" type="email" id="new_email" name="email">
+        </div>
+        <button type="submit" class="run-btn login-btn">
+          <span>Add user</span>
+          <span class="run-icon">&rarr;</span>
+        </button>
+      </form>
+    </div>
+  </section>
+{% endblock %}
