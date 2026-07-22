@@ -21,11 +21,12 @@ from pathlib import Path
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    jsonify, send_file, abort, session, flash
+    jsonify, send_file, abort, session, flash, Response
 )
 from werkzeug.utils import secure_filename
 
 from auth import verify_user
+import profiles
 from processors import (
     scraper, resizer, price_insert,
     single_link_downloader, multi_link_downloader, original_ratio_downloader,
@@ -83,6 +84,55 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
+    username = session["user"]
+
+    if request.method == "POST":
+        avatar_file = request.files.get("avatar")
+        if avatar_file and avatar_file.filename:
+            try:
+                profiles.save_avatar(username, avatar_file)
+            except ValueError as e:
+                flash(str(e))
+                return redirect(url_for("profile"))
+            except Exception:
+                traceback.print_exc()
+                flash("ছবি সেভ করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।")
+                return redirect(url_for("profile"))
+
+        try:
+            profiles.update_profile(
+                username,
+                request.form.get("full_name", ""),
+                request.form.get("bio", ""),
+                request.form.get("email", ""),
+            )
+            flash("প্রোফাইল সেভ হয়েছে।", "success")
+        except Exception:
+            traceback.print_exc()
+            flash("প্রোফাইল সেভ করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।")
+        return redirect(url_for("profile"))
+
+    profile_data = profiles.get_profile(username)
+    return render_template(
+        "profile.html",
+        profile=profile_data,
+        username=username,
+        github_configured=profiles.use_github(),
+    )
+
+
+@app.route("/avatar/<username>")
+def avatar(username):
+    data, mimetype = profiles.get_avatar_bytes(username)
+    if not data:
+        abort(404)
+    resp = Response(data, mimetype=mimetype)
+    resp.headers["Cache-Control"] = "private, max-age=300"
+    return resp
 
 # ──────────────────────────────────────────────────────────────────────────
 # Tool registry — add a new tool here and it shows up on the landing page.
