@@ -56,6 +56,12 @@ app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2 GB uploads
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(32)
 
 
+@app.context_processor
+def inject_now_year():
+    import datetime
+    return {"now_year": datetime.datetime.now().year}
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Login system — every route below requires a logged-in session unless it's
 # in PUBLIC_ENDPOINTS. Users are managed in auth.py (see APP_USERS env var
