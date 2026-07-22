@@ -559,7 +559,12 @@ def index():
         else:
             display_items.append({"kind": "tool", "id": tool_id, "item": tool})
 
-    return render_template("index.html", display_items=display_items)
+    stage_filter = request.args.get("stage")
+    if stage_filter:
+        stage_filter = stage_filter.upper()
+        display_items = [e for e in display_items if e["item"]["stage"] == stage_filter]
+
+    return render_template("index.html", display_items=display_items, active_stage=stage_filter)
 
 
 @app.route("/folder/<group_id>")
