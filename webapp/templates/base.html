@@ -26,7 +26,10 @@
     <div class="topbar-right">
       <span class="brand-sub">local console &middot; {{ request.host }}</span>
       {% if session.get('user') %}
-        <span class="topbar-user">{{ session.get('user') }}</span>
+        <a class="topbar-user" href="{{ url_for('profile') }}">
+          <img class="topbar-avatar" src="{{ url_for('avatar', username=session.get('user')) }}" alt="" onerror="this.style.display='none'">
+          {{ session.get('user') }}
+        </a>
         <a class="topbar-logout" href="{{ url_for('logout') }}">Log out</a>
       {% endif %}
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light and dark theme">
