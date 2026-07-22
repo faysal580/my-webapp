@@ -10,6 +10,7 @@ Run:
 Then open:
     http://localhost:5000
 """
+import functools
 import os
 import shutil
 import tempfile
@@ -20,10 +21,11 @@ from pathlib import Path
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    jsonify, send_file, abort
+    jsonify, send_file, abort, session, flash
 )
 from werkzeug.utils import secure_filename
 
+from auth import verify_user
 from processors import (
     scraper, resizer, price_insert,
     single_link_downloader, multi_link_downloader, original_ratio_downloader,
@@ -38,6 +40,49 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2 GB uploads
+
+# Needed to sign session cookies. Set a real SECRET_KEY env var on Render
+# (Dashboard -> service -> Environment) so logins survive redeploys/restarts;
+# otherwise a random one is generated each boot and everyone gets logged out.
+app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(32)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Login system — every route below requires a logged-in session unless it's
+# in PUBLIC_ENDPOINTS. Users are managed in auth.py (see APP_USERS env var
+# or data/users.json). Add new users with `python add_user.py`.
+# ──────────────────────────────────────────────────────────────────────────
+PUBLIC_ENDPOINTS = {"login", "static"}
+
+
+@app.before_request
+def require_login():
+    if request.endpoint in PUBLIC_ENDPOINTS or request.endpoint is None:
+        return
+    if not session.get("user"):
+        return redirect(url_for("login", next=request.path))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        if verify_user(username, password):
+            session.clear()
+            session["user"] = username
+            session.permanent = True
+            next_url = request.form.get("next") or url_for("index")
+            return redirect(next_url)
+        flash("ভুল ইউজারনেম বা পাসওয়ার্ড।")
+    next_url = request.args.get("next", "")
+    return render_template("login.html", next_url=next_url)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 # ──────────────────────────────────────────────────────────────────────────
 # Tool registry — add a new tool here and it shows up on the landing page.
