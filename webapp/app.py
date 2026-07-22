@@ -25,7 +25,15 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from auth import verify_user
+from auth import (
+    verify_user,
+    change_password as auth_change_password,
+    is_admin,
+    list_usernames,
+    admin_set_password,
+    add_or_update_user,
+    delete_user as auth_delete_user,
+)
 import profiles
 from processors import (
     scraper, resizer, price_insert,
@@ -64,6 +72,15 @@ def require_login():
         return redirect(url_for("login", next=request.path))
 
 
+def admin_required(view_func):
+    @functools.wraps(view_func)
+    def wrapped(*args, **kwargs):
+        if not is_admin(session.get("user")):
+            abort(403)
+        return view_func(*args, **kwargs)
+    return wrapped
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -72,6 +89,7 @@ def login():
         if verify_user(username, password):
             session.clear()
             session["user"] = username
+            session["is_admin"] = is_admin(username)
             session.permanent = True
             next_url = request.form.get("next") or url_for("index")
             return redirect(next_url)
@@ -133,6 +151,105 @@ def avatar(username):
     resp = Response(data, mimetype=mimetype)
     resp.headers["Cache-Control"] = "private, max-age=300"
     return resp
+
+
+@app.route("/profile/password", methods=["POST"])
+def change_password():
+    username = session["user"]
+    current_password = request.form.get("current_password", "")
+    new_password = request.form.get("new_password", "")
+    confirm_password = request.form.get("confirm_password", "")
+
+    if new_password != confirm_password:
+        flash("নতুন পাসওয়ার্ড দুটো মিলছে না।")
+        return redirect(url_for("profile"))
+
+    try:
+        auth_change_password(username, current_password, new_password)
+        flash("পাসওয়ার্ড পরিবর্তন হয়েছে।", "success")
+    except ValueError as e:
+        flash(str(e))
+    except Exception:
+        traceback.print_exc()
+        flash("পাসওয়ার্ড পরিবর্তন করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।")
+
+    return redirect(url_for("profile"))
+
+
+@app.route("/admin")
+@admin_required
+def admin_panel():
+    usernames = list_usernames()
+    users = []
+    for u in usernames:
+        p = profiles.get_profile(u)
+        users.append({
+            "username": u,
+            "full_name": p.get("full_name", ""),
+            "email": p.get("email", ""),
+            "is_admin": is_admin(u),
+        })
+    return render_template(
+        "admin.html",
+        users=users,
+        github_configured=profiles.use_github(),
+        current_user=session.get("user"),
+    )
+
+
+@app.route("/admin/reset-password", methods=["POST"])
+@admin_required
+def admin_reset_password():
+    username = request.form.get("username", "")
+    new_password = request.form.get("new_password", "")
+    try:
+        admin_set_password(username, new_password)
+        flash(f"{username}-এর পাসওয়ার্ড বদলে দেওয়া হয়েছে।", "success")
+    except ValueError as e:
+        flash(str(e))
+    except Exception:
+        traceback.print_exc()
+        flash("পাসওয়ার্ড রিসেট করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।")
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/add-user", methods=["POST"])
+@admin_required
+def admin_add_user():
+    username = request.form.get("username", "")
+    password = request.form.get("password", "")
+    full_name = request.form.get("full_name", "")
+    email = request.form.get("email", "")
+    try:
+        add_or_update_user(username, password)
+        if full_name or email:
+            profiles.update_profile(username.strip(), full_name, "", email)
+        flash(f"{username} যোগ হয়েছে।", "success")
+    except ValueError as e:
+        flash(str(e))
+    except Exception:
+        traceback.print_exc()
+        flash("নতুন ইউজার যোগ করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।")
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/delete-user", methods=["POST"])
+@admin_required
+def admin_delete_user():
+    username = request.form.get("username", "")
+    if username == session.get("user"):
+        flash("নিজের একাউন্ট নিজে ডিলিট করা যাবে না।")
+        return redirect(url_for("admin_panel"))
+    try:
+        auth_delete_user(username)
+        profiles.delete_profile(username)
+        flash(f"{username} ডিলিট হয়েছে।", "success")
+    except ValueError as e:
+        flash(str(e))
+    except Exception:
+        traceback.print_exc()
+        flash("ইউজার ডিলিট করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।")
+    return redirect(url_for("admin_panel"))
 
 # ──────────────────────────────────────────────────────────────────────────
 # Tool registry — add a new tool here and it shows up on the landing page.

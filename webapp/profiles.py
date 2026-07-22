@@ -68,6 +68,16 @@ def get_profile(username):
     return profile
 
 
+def delete_profile(username):
+    """Remove a user's profile record (name/bio/email/avatar key). Best-effort
+    — the avatar image file itself is left in place, it's just unlinked."""
+    profiles = _load_all()
+    if username in profiles:
+        del profiles[username]
+        _save_all(profiles, f"Delete profile: {username}")
+    _avatar_cache.pop(username, None)
+
+
 def update_profile(username, full_name, bio, email):
     profiles = _load_all()
     profile = dict(DEFAULT_PROFILE)
