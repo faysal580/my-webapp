@@ -24,7 +24,7 @@
   <div class="stage-grid">
     {% for entry in display_items %}
       {% if entry.kind == "group" %}
-        <a class="stage-card stage-card-folder" href="{{ url_for('folder_page', group_id=entry.id) }}">
+        <a class="stage-card stage-card-folder" data-search="{{ entry.id }} {{ entry.item.name }} {{ entry.item.description }} {{ entry.item.stage }}" href="{{ url_for('folder_page', group_id=entry.id) }}">
           <div class="stage-top">
             <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
             <span class="stage-icon">{{ entry.item.icon|safe }}</span>
@@ -36,7 +36,7 @@
         </a>
       {% else %}
         {% set card_color = "card-c" ~ (loop.index0 % 5) %}
-        <a class="stage-card {{ card_color }}" href="{{ url_for('tool_page', tool_id=entry.id) }}">
+        <a class="stage-card {{ card_color }}" data-search="{{ entry.id }} {{ entry.item.name }} {{ entry.item.description }} {{ entry.item.stage }}" href="{{ url_for('tool_page', tool_id=entry.id) }}">
           <div class="stage-top">
             <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
             <span class="stage-icon">{{ entry.item.icon|safe }}</span>
@@ -99,7 +99,7 @@
         <div class="stage-grid stage-grid-compact">
           {% for entry in display_items %}
             {% if entry.kind == "group" %}
-              <a class="stage-card stage-card-folder" href="{{ url_for('folder_page', group_id=entry.id) }}">
+              <a class="stage-card stage-card-folder" data-search="{{ entry.id }} {{ entry.item.name }} {{ entry.item.description }} {{ entry.item.stage }}" href="{{ url_for('folder_page', group_id=entry.id) }}">
                 <div class="stage-top">
                   <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
                   <span class="stage-icon">{{ entry.item.icon|safe }}</span>
@@ -111,7 +111,7 @@
               </a>
             {% else %}
               {% set card_color = "card-c" ~ (loop.index0 % 5) %}
-              <a class="stage-card {{ card_color }}" href="{{ url_for('tool_page', tool_id=entry.id) }}">
+              <a class="stage-card {{ card_color }}" data-search="{{ entry.id }} {{ entry.item.name }} {{ entry.item.description }} {{ entry.item.stage }}" href="{{ url_for('tool_page', tool_id=entry.id) }}">
                 <div class="stage-top">
                   <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
                   <span class="stage-icon">{{ entry.item.icon|safe }}</span>
