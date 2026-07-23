@@ -16,6 +16,13 @@
       <h1 class="login-title">Welcome Back!</h1>
       <p class="lead login-lead">Sign in to continue to your dashboard</p>
 
+      {% if maintenance %}
+        <div class="login-error login-maintenance-banner">
+          🛠️ সাইটটি এখন Maintenance-এ আছে। শুধু admin লগইন করতে পারবে।
+          {% if maintenance_message %}<br>{{ maintenance_message }}{% endif %}
+        </div>
+      {% endif %}
+
       {% with messages = get_flashed_messages() %}
         {% if messages %}
           <div class="login-error">{{ messages[0] }}</div>

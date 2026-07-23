@@ -18,6 +18,32 @@
       </div>
     {% endif %}
 
+    <h2 class="profile-subtitle admin-add-title">Maintenance Break</h2>
+    <div class="admin-card admin-add-card">
+      {% if maintenance_on %}
+        <div class="profile-warning">
+          🛠️ Maintenance Mode এখন <strong>চালু</strong> — admin ছাড়া কেউ লগইন করতে পারবে না, এবং যারা আগে থেকে লগইন করা আছে তারাও maintenance স্ক্রিন দেখবে।
+        </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin_set_maintenance') }}" class="login-form">
+        <div class="form-row">
+          <label class="checkbox-label">
+            <input type="checkbox" name="maintenance" {% if maintenance_on %}checked{% endif %}>
+            Maintenance Mode চালু করুন (admin ছাড়া কেউ লগইন/ব্যবহার করতে পারবে না)
+          </label>
+        </div>
+        <div class="form-row">
+          <label for="maintenance_message">Message (ঐচ্ছিক — ইউজারদের দেখানো হবে)</label>
+          <input class="text-input" type="text" id="maintenance_message" name="maintenance_message"
+                 value="{{ maintenance_message }}" placeholder="যেমন: রাত ১২টার মধ্যে আবার চালু হবে।">
+        </div>
+        <button type="submit" class="run-btn login-btn">
+          <span>Save</span>
+          <span class="run-icon">&rarr;</span>
+        </button>
+      </form>
+    </div>
+
     <div class="admin-card">
       <table class="admin-table">
         <thead>
