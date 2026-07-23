@@ -115,5 +115,14 @@
     "status": "done",
     "output_bytes": 523264,
     "file_count": 1
+  },
+  {
+    "ts": 1784800737.5780425,
+    "tool_id": "resizer",
+    "tool_name": "Bulk Image Resizer",
+    "stage": "RESIZE",
+    "status": "done",
+    "output_bytes": 1109862,
+    "file_count": 1
   }
 ]
