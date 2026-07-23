@@ -43,5 +43,14 @@
     "status": "done",
     "output_bytes": 3114992,
     "file_count": 1
+  },
+  {
+    "ts": 1784796087.1878319,
+    "tool_id": "original_name_1080",
+    "tool_name": "Original Name & 1080px Downloader",
+    "stage": "DOWNLOAD",
+    "status": "done",
+    "output_bytes": 257137,
+    "file_count": 1
   }
 ]
