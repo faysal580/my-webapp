@@ -38,6 +38,7 @@ from auth import (
 )
 import profiles
 import stats_store
+import settings_store
 from processors import (
     scraper, resizer, price_insert,
     single_link_downloader, multi_link_downloader, original_ratio_downloader,
@@ -80,6 +81,14 @@ def require_login():
     if not session.get("user"):
         return redirect(url_for("login", next=request.path))
 
+    # Maintenance Break: once it's on, only admins can keep using the app —
+    # anyone else who's already logged in gets the maintenance screen on
+    # every page (logging out is still allowed).
+    if (settings_store.is_maintenance_on()
+            and not is_admin(session.get("user"))
+            and request.endpoint != "logout"):
+        return render_template("maintenance.html", message=settings_store.get_maintenance_message()), 503
+
 
 def admin_required(view_func):
     @functools.wraps(view_func)
@@ -92,10 +101,19 @@ def admin_required(view_func):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    maintenance_on = settings_store.is_maintenance_on()
+    maintenance_message = settings_store.get_maintenance_message()
+
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
         if verify_user(username, password):
+            if maintenance_on and not is_admin(username):
+                flash("এখন Maintenance চলছে — শুধু admin লগইন করতে পারবে। একটু পরে আবার চেষ্টা করুন।")
+                return render_template(
+                    "login.html", next_url=request.form.get("next") or "",
+                    maintenance=maintenance_on, maintenance_message=maintenance_message,
+                )
             session.clear()
             session["user"] = username
             session["is_admin"] = is_admin(username)
@@ -104,7 +122,10 @@ def login():
             return redirect(next_url)
         flash("ভুল ইউজারনেম বা পাসওয়ার্ড।")
     next_url = request.args.get("next", "")
-    return render_template("login.html", next_url=next_url)
+    return render_template(
+        "login.html", next_url=next_url,
+        maintenance=maintenance_on, maintenance_message=maintenance_message,
+    )
 
 
 @app.route("/logout")
@@ -203,7 +224,23 @@ def admin_panel():
         users=users,
         github_configured=profiles.use_github(),
         current_user=session.get("user"),
+        maintenance_on=settings_store.is_maintenance_on(),
+        maintenance_message=settings_store.get_maintenance_message(),
     )
+
+
+@app.route("/admin/maintenance", methods=["POST"])
+@admin_required
+def admin_set_maintenance():
+    on = request.form.get("maintenance") == "on"
+    message = request.form.get("maintenance_message", "")
+    try:
+        settings_store.set_maintenance(on, message)
+        flash("Maintenance Mode " + ("চালু" if on else "বন্ধ") + " করা হয়েছে।", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Maintenance Mode সেট করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।")
+    return redirect(url_for("admin_panel"))
 
 
 @app.route("/admin/reset-password", methods=["POST"])
@@ -378,7 +415,7 @@ TOOLS = {
     },
     "resizer": {
         "name": "Bulk Image Resizer",
-        "description": "Upload multiple images — resizes all of them onto a square canvas, keeps every file under the size limit, and zips the results.",
+        "description": "Upload multiple images — resizes each one onto a square canvas, skips any files whose output name duplicates another's, keeps every file under the size limit, and zips the results.",
         "stage": "RESIZE",
         "icon": ICONS["expand"],
         "fields": [
