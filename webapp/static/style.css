@@ -206,7 +206,8 @@ a { color: inherit; }
 /* ── Topbar ─────────────────────────────────────────────────────────── */
 
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 240px) max-content;
   align-items: center;
   justify-content: space-between;
   padding: 18px 28px;
@@ -217,6 +218,36 @@ a { color: inherit; }
   top: 0;
   z-index: 10;
 }
+.topbar-search {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.topbar-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.topbar-search svg { width: 16px; height: 16px; flex-shrink: 0; }
+.topbar-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.topbar-search input::placeholder { color: var(--muted); }
 .topbar::after {
   content: "";
   position: absolute;
@@ -261,7 +292,15 @@ a { color: inherit; }
 }
 @media (min-width: 760px) { .brand-sub-pill { display: inline; } }
 
+@media (max-width: 700px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+}
+
 .topbar-right {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 14px;
