@@ -54,6 +54,13 @@
             <div class="layer-hint">Select the template PSD above to load its layers…</div>
             <div class="layer-options"></div>
           </div>
+        {% elif field.type == "multi_layer_select" %}
+          <div class="layer-select" data-source="{{ field.source_field }}" data-default="{{ field.default or '' }}" data-multi="true">
+            <input type="hidden" id="{{ field.key }}" name="{{ field.key }}" value="{{ field.default or '' }}">
+            <div class="layer-hint">Select the template PSD above to load its layers…</div>
+            <div class="layer-options"></div>
+            {% if field.hint %}<div class="field-hint">{{ field.hint }}</div>{% endif %}
+          </div>
         {% endif %}
         {% endif %}
       </div>
@@ -105,17 +112,27 @@
     document.querySelectorAll(".layer-select").forEach(function(box) {
       const sourceKey = box.dataset.source;
       const defaultLayer = (box.dataset.default || "").toLowerCase();
+      const isMulti = box.dataset.multi === "true";
       const sourceInput = document.getElementById(sourceKey);
       const hiddenInput = box.querySelector("input[type=hidden]");
       const hint = box.querySelector(".layer-hint");
       const optionsBox = box.querySelector(".layer-options");
       if (!sourceInput) return;
 
+      // Single-select: exactly one chip active, stored as a plain string.
       function selectLayer(name) {
         hiddenInput.value = name;
         optionsBox.querySelectorAll(".layer-chip").forEach(function(chip) {
           chip.classList.toggle("selected", chip.dataset.layer === name);
         });
+      }
+
+      // Multi-select: any number of chips active, stored comma-separated.
+      function toggleLayer(chip) {
+        chip.classList.toggle("selected");
+        const chosen = Array.prototype.slice.call(optionsBox.querySelectorAll(".layer-chip.selected"))
+          .map(function(c) { return c.dataset.layer; });
+        hiddenInput.value = chosen.join(",");
       }
 
       function renderOptions(layers) {
@@ -125,17 +142,35 @@
           hiddenInput.value = "";
           return;
         }
-        hint.textContent = "Choose which layer to use:";
+        hint.textContent = isMulti
+          ? "Select every layer that should stay visible (others will be turned off):"
+          : "Choose which layer to use:";
+        const defaults = defaultLayer.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
         layers.forEach(function(name) {
           const chip = document.createElement("span");
           chip.className = "layer-chip";
           chip.textContent = name;
           chip.dataset.layer = name;
-          chip.addEventListener("click", function() { selectLayer(name); });
+          if (isMulti) {
+            chip.addEventListener("click", function() { toggleLayer(chip); });
+          } else {
+            chip.addEventListener("click", function() { selectLayer(name); });
+          }
           optionsBox.appendChild(chip);
         });
-        const preferred = layers.find(function(n) { return n.toLowerCase() === defaultLayer; });
-        selectLayer(preferred || layers[0]);
+        if (isMulti) {
+          optionsBox.querySelectorAll(".layer-chip").forEach(function(chip) {
+            if (defaults.indexOf(chip.dataset.layer.toLowerCase()) !== -1) {
+              chip.classList.add("selected");
+            }
+          });
+          const chosen = Array.prototype.slice.call(optionsBox.querySelectorAll(".layer-chip.selected"))
+            .map(function(c) { return c.dataset.layer; });
+          hiddenInput.value = chosen.join(",");
+        } else {
+          const preferred = layers.find(function(n) { return n.toLowerCase() === defaultLayer; });
+          selectLayer(preferred || layers[0]);
+        }
       }
 
       sourceInput.addEventListener("change", function() {

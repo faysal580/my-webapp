@@ -15,12 +15,87 @@
     </span>
   </div>
 
+  <div id="progressCard" class="progress-card" style="display:none;">
+    <div class="progress-card-top">
+      <div class="progress-card-title" id="progressTitle">Downloading&hellip;</div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bubble" id="progressBubble" style="left:0%;">0%</div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressFill" style="width:0%;"></div>
+      </div>
+    </div>
+
+    <div class="progress-meta-row">
+      <div class="progress-count">
+        <span class="progress-count-num" id="progressCount">0</span> / <span id="progressTotal">0</span> files downloaded
+      </div>
+      <div class="progress-percent-block">
+        <div class="progress-percent-num"><span id="progressPercentBig">0</span><span class="progress-percent-sign">%</span></div>
+        <div class="progress-percent-label">Overall Progress</div>
+      </div>
+    </div>
+
+    <div class="progress-stats-grid">
+      <div class="progress-stat-card">
+        <span class="progress-stat-icon stat-success">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.5 2.5L16 9"/></svg>
+        </span>
+        <div>
+          <div class="progress-stat-label">Success</div>
+          <div class="progress-stat-value stat-success" id="statSuccess">0</div>
+        </div>
+      </div>
+      <div class="progress-stat-card">
+        <span class="progress-stat-icon stat-failed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+        </span>
+        <div>
+          <div class="progress-stat-label">Failed</div>
+          <div class="progress-stat-value stat-failed" id="statFailed">0</div>
+        </div>
+      </div>
+      <div class="progress-stat-card">
+        <span class="progress-stat-icon stat-remaining">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>
+        </span>
+        <div>
+          <div class="progress-stat-label">Remaining</div>
+          <div class="progress-stat-value stat-remaining" id="statRemaining">0</div>
+        </div>
+      </div>
+      <div class="progress-stat-card">
+        <span class="progress-stat-icon stat-current">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4.5 13.5H11L10 22l9-11.5H12.5L13 2z" stroke-linejoin="round"/></svg>
+        </span>
+        <div>
+          <div class="progress-stat-label">Download Speed</div>
+          <div class="progress-stat-value stat-current" id="statSpeed">&mdash;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice notice-row">
+    <span><strong>&#9432;</strong> Please keep this page open. Do not close or refresh the page until the process is complete.</span>
+    <span class="notice-timestamp" id="startedAtRow" style="display:none;">Started at: <span id="startedAt"></span></span>
+  </div>
+
   <div class="console">
     <div class="console-bar">
       <span class="console-dot dot-r"></span>
       <span class="console-dot dot-y"></span>
       <span class="console-dot dot-g"></span>
       <span class="console-title">run log</span>
+      <span class="console-bar-right">
+        <label class="autoscroll-toggle">
+          <span>Auto scroll</span>
+          <input type="checkbox" id="autoScrollToggle" checked>
+          <span class="autoscroll-switch"></span>
+        </label>
+        <button type="button" class="clear-log-btn" id="clearLogBtn">&#128465; Clear log</button>
+      </span>
     </div>
     <pre id="logBox" class="console-body"></pre>
   </div>
@@ -30,6 +105,17 @@
     <div id="fileLinks" class="file-links"></div>
   </div>
 
+  <div class="job-footer">
+    <button type="button" class="stop-btn" id="stopBtn">&#9632; Stop Process</button>
+    <label class="after-completion">
+      <span>After completion:</span>
+      <select id="afterCompletion">
+        <option value="nothing">Do nothing</option>
+        <option value="download">Auto-download files</option>
+      </select>
+    </label>
+  </div>
+
   <script>
     const jobId = {{ job_id | tojson }};
     const logBox = document.getElementById("logBox");
@@ -37,15 +123,86 @@
     const statusLabel = document.getElementById("statusLabel");
     const downloadArea = document.getElementById("downloadArea");
     const fileLinks = document.getElementById("fileLinks");
+    const progressCard = document.getElementById("progressCard");
+    const progressTitle = document.getElementById("progressTitle");
+    const progressFill = document.getElementById("progressFill");
+    const progressBubble = document.getElementById("progressBubble");
+    const progressCount = document.getElementById("progressCount");
+    const progressTotal = document.getElementById("progressTotal");
+    const progressPercentBig = document.getElementById("progressPercentBig");
+    const statSuccess = document.getElementById("statSuccess");
+    const statFailed = document.getElementById("statFailed");
+    const statRemaining = document.getElementById("statRemaining");
+    const statSpeed = document.getElementById("statSpeed");
+    const startedAtRow = document.getElementById("startedAtRow");
+    const startedAtEl = document.getElementById("startedAt");
+    const autoScrollToggle = document.getElementById("autoScrollToggle");
+    const clearLogBtn = document.getElementById("clearLogBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const afterCompletion = document.getElementById("afterCompletion");
     let lastLen = 0;
     let stopped = false;
+    let stopRequested = false;
+    let lastBytes = 0;
+    let lastBytesTs = null;
+    let speedSmoothed = null;
 
     const STATUS_TEXT = {
       queued: "Queued",
       running: "Running",
       done: "Done",
+      stopped: "Stopped",
       error: "Failed"
     };
+
+    clearLogBtn.addEventListener("click", () => { logBox.textContent = ""; });
+
+    stopBtn.addEventListener("click", async () => {
+      if (stopRequested) return;
+      stopRequested = true;
+      stopBtn.disabled = true;
+      stopBtn.textContent = "Stopping…";
+      try {
+        await fetch(`/job/${jobId}/stop`, { method: "POST" });
+      } catch (e) { /* ignore, next poll will reflect actual state */ }
+    });
+
+    function formatSpeed(bytesPerSec) {
+      if (!bytesPerSec || bytesPerSec <= 0) return "\u2014";
+      if (bytesPerSec < 1024) return bytesPerSec.toFixed(0) + " B/s";
+      if (bytesPerSec < 1024 * 1024) return (bytesPerSec / 1024).toFixed(1) + " KB/s";
+      return (bytesPerSec / (1024 * 1024)).toFixed(2) + " MB/s";
+    }
+
+    function renderProgress(p) {
+      if (!p || !p.total) { return; }
+      progressCard.style.display = "block";
+      const done = (p.success || 0) + (p.failed || 0);
+      const pct = p.total ? Math.round((done / p.total) * 100) : 0;
+      progressFill.style.width = pct + "%";
+      progressBubble.style.left = `calc(${pct}% - 20px)`;
+      progressBubble.textContent = pct + "%";
+      progressCount.textContent = done;
+      progressTotal.textContent = p.total;
+      progressPercentBig.textContent = pct;
+      statSuccess.textContent = p.success || 0;
+      statFailed.textContent = p.failed || 0;
+      statRemaining.textContent = Math.max(0, p.total - done);
+
+      const bytesNow = p.bytes || 0;
+      const nowTs = Date.now();
+      if (lastBytesTs !== null) {
+        const dt = (nowTs - lastBytesTs) / 1000;
+        const db = bytesNow - lastBytes;
+        if (dt > 0 && db >= 0) {
+          const instant = db / dt;
+          speedSmoothed = speedSmoothed === null ? instant : (speedSmoothed * 0.6 + instant * 0.4);
+        }
+      }
+      lastBytes = bytesNow;
+      lastBytesTs = nowTs;
+      statSpeed.textContent = (done >= p.total && p.total > 0) ? "\u2014" : formatSpeed(speedSmoothed);
+    }
 
     async function poll() {
       if (stopped) return;
@@ -53,53 +210,68 @@
         const res = await fetch(`/job/${jobId}/status`);
         const data = await res.json();
 
-        statusPill.dataset.state = data.status;
+        statusPill.dataset.state = data.status === "stopped" ? "error" : data.status;
         statusLabel.textContent = STATUS_TEXT[data.status] || data.status;
+
+        if (data.started_at) {
+          startedAtRow.style.display = "inline";
+          startedAtEl.textContent = new Date(data.started_at * 1000).toLocaleTimeString();
+        }
+
+        renderProgress(data.progress);
 
         if (data.logs.length > lastLen) {
           const newLines = data.logs.slice(lastLen).join("\n");
           logBox.textContent += (lastLen > 0 ? "\n" : "") + newLines;
           lastLen = data.logs.length;
-          logBox.scrollTop = logBox.scrollHeight;
+          if (autoScrollToggle.checked) {
+            logBox.scrollTop = logBox.scrollHeight;
+          }
         }
 
         if (data.status === "running" || data.status === "queued") {
           setTimeout(poll, 1000);
-        } else if (data.status === "done") {
+        } else {
           stopped = true;
-          if (data.files && data.files.length) {
-            downloadArea.style.display = "block";
-            fileLinks.innerHTML = "";
-            data.files.forEach((fname, i) => {
-              const href = `/job/${jobId}/download/${encodeURIComponent(fname)}`;
-              const a = document.createElement("a");
-              a.href = href;
-              a.className = "download-btn";
-              a.innerHTML = "&#8595; " + fname;
-              fileLinks.appendChild(a);
+          stopBtn.disabled = true;
+          stopBtn.style.display = "none";
+          progressTitle.textContent = data.status === "error" ? "Failed"
+            : data.status === "stopped" ? "Stopped" : "Complete";
 
-              if (data.auto_download) {
-                // Stagger downloads slightly so the browser doesn't
-                // treat a burst of simultaneous downloads as spam.
-                setTimeout(() => {
-                  const trigger = document.createElement("a");
-                  trigger.href = href;
-                  trigger.download = fname;
-                  document.body.appendChild(trigger);
-                  trigger.click();
-                  trigger.remove();
-                }, i * 350);
+          if (data.status === "done" || data.status === "stopped") {
+            const wantDownload = afterCompletion.value === "download" || data.auto_download;
+            if (data.files && data.files.length) {
+              downloadArea.style.display = "block";
+              fileLinks.innerHTML = "";
+              data.files.forEach((fname, i) => {
+                const href = `/job/${jobId}/download/${encodeURIComponent(fname)}`;
+                const a = document.createElement("a");
+                a.href = href;
+                a.className = "download-btn";
+                a.innerHTML = "&#8595; " + fname;
+                fileLinks.appendChild(a);
+
+                if (wantDownload) {
+                  // Stagger downloads slightly so the browser doesn't
+                  // treat a burst of simultaneous downloads as spam.
+                  setTimeout(() => {
+                    const trigger = document.createElement("a");
+                    trigger.href = href;
+                    trigger.download = fname;
+                    document.body.appendChild(trigger);
+                    trigger.click();
+                    trigger.remove();
+                  }, i * 350);
+                }
+              });
+              if (wantDownload) {
+                const note = document.createElement("div");
+                note.className = "auto-download-note";
+                note.textContent = "Auto-downloading files… if your browser blocked it, use the links below.";
+                downloadArea.insertBefore(note, fileLinks);
               }
-            });
-            if (data.auto_download) {
-              const note = document.createElement("div");
-              note.className = "auto-download-note";
-              note.textContent = "Auto-downloading files… if your browser blocked it, use the links below.";
-              downloadArea.insertBefore(note, fileLinks);
             }
           }
-        } else if (data.status === "error") {
-          stopped = true;
         }
       } catch (e) {
         setTimeout(poll, 1500);

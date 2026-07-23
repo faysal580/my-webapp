@@ -59,6 +59,28 @@
           <span class="run-icon">&rarr;</span>
         </button>
       </form>
+
+      <div class="profile-divider"></div>
+
+      <h2 class="profile-subtitle">Change password</h2>
+      <form method="post" action="{{ url_for('change_password') }}" class="login-form">
+        <div class="form-row">
+          <label for="current_password">Current password</label>
+          <input class="text-input" type="password" id="current_password" name="current_password" autocomplete="current-password" required>
+        </div>
+        <div class="form-row">
+          <label for="new_password">New password</label>
+          <input class="text-input" type="password" id="new_password" name="new_password" autocomplete="new-password" required minlength="4">
+        </div>
+        <div class="form-row">
+          <label for="confirm_password">Confirm new password</label>
+          <input class="text-input" type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required minlength="4">
+        </div>
+        <button type="submit" class="run-btn login-btn">
+          <span>Update password</span>
+          <span class="run-icon">&rarr;</span>
+        </button>
+      </form>
     </div>
   </section>
 
