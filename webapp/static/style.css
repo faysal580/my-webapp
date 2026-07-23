@@ -26,11 +26,33 @@
 
   --shadow-card: 0 1px 3px rgba(30, 41, 68, 0.06);
   --shadow-lift: 0 20px 45px -20px rgba(76, 29, 149, 0.22);
+  --topbar-bg: rgba(255, 255, 255, 0.85);
 
   --font-mono: "IBM Plex Mono", "Noto Sans Bengali", monospace;
   --font-body: "Inter", "Noto Sans Bengali", system-ui, sans-serif;
 
   color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #11141b;
+  --bg-glow: rgba(30, 136, 229, 0.12);
+  --panel: #1a1f29;
+  --panel-2: #222936;
+  --border: #343d4d;
+  --border-soft: #2a3240;
+  --text: #edf1f7;
+  --subtext: #a9b3c5;
+  --muted: #778399;
+  --accent-soft: rgba(30, 136, 229, 0.18);
+  --accent-2-soft: rgba(124, 58, 237, 0.18);
+  --green-soft: rgba(22, 163, 74, 0.17);
+  --red-soft: rgba(220, 38, 38, 0.15);
+  --yellow-soft: rgba(217, 119, 6, 0.17);
+  --shadow-card: 0 4px 14px rgba(0, 0, 0, 0.18);
+  --shadow-lift: 0 20px 45px -20px rgba(0, 0, 0, 0.55);
+  --topbar-bg: rgba(17, 20, 27, 0.88);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -189,7 +211,7 @@ a { color: inherit; }
   justify-content: space-between;
   padding: 18px 28px;
   border-bottom: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--topbar-bg);
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
@@ -245,6 +267,26 @@ a { color: inherit; }
   gap: 14px;
   margin-left: auto;
 }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--panel-2);
+  color: var(--subtext);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--text); }
+.theme-icon { width: 15px; height: 15px; }
+:root[data-theme="dark"] .theme-icon-sun { display: none; }
+:root:not([data-theme="dark"]) .theme-icon-moon { display: none; }
+@media (max-width: 560px) { .theme-toggle-label { display: none; } }
 
 .topbar-username {
   font-family: var(--font-mono);
@@ -809,10 +851,12 @@ a { color: inherit; }
 
 body.login-page {
   background:
-    linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)),
+    linear-gradient(var(--login-overlay), var(--login-overlay)),
     url("images/login-bg.png") center top / cover no-repeat;
   min-height: 100vh;
 }
+:root { --login-overlay: rgba(255, 255, 255, 0.4); }
+:root[data-theme="dark"] { --login-overlay: rgba(10, 13, 18, 0.72); }
 
 .login-wrap {
   display: flex;
