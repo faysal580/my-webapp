@@ -7,5 +7,14 @@
     "status": "done",
     "output_bytes": 17453402,
     "file_count": 1
+  },
+  {
+    "ts": 1784793854.0182197,
+    "tool_id": "single_link_downloader",
+    "tool_name": "Serial Wise Image",
+    "stage": "DOWNLOAD",
+    "status": "done",
+    "output_bytes": 2993805,
+    "file_count": 1
   }
 ]
