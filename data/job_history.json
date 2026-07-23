@@ -1,0 +1,11 @@
+[
+  {
+    "ts": 1784788523.8559513,
+    "tool_id": "resizer",
+    "tool_name": "Bulk Image Resizer",
+    "stage": "RESIZE",
+    "status": "done",
+    "output_bytes": 17453402,
+    "file_count": 1
+  }
+]
