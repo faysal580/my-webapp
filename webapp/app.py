@@ -11,10 +11,12 @@ Then open:
     http://localhost:5000
 """
 import functools
+import inspect
 import os
 import shutil
 import tempfile
 import threading
+import time
 import traceback
 import uuid
 from pathlib import Path
@@ -313,7 +315,8 @@ TOOLS = {
              "placeholder": "https://example.com/image-1.jpg\nhttps://example.com/image-2.jpg", "required": False},
             {"key": "canvas_size", "type": "number", "label": "Canvas size (px)", "default": 1080},
             {"key": "jpeg_quality", "type": "number", "label": "JPEG quality (1-100)", "default": 95},
-            {"key": "max_workers", "type": "number", "label": "Parallel downloads", "default": 10},
+            {"key": "max_workers", "type": "number", "label": "Parallel downloads", "default": 24,
+             "hint": "Higher = faster (more images download at once). 20–30 is a good range for most sites."},
             {"key": "make_zip", "type": "checkbox", "label": "Zip the output files", "default": True,
              "hint": "Uncheck to skip zipping — files will auto-download individually instead."},
         ],
@@ -332,7 +335,8 @@ TOOLS = {
             {"key": "canvas_size", "type": "number", "label": "Canvas size (px)", "default": 1080},
             {"key": "jpeg_quality", "type": "number", "label": "JPEG quality (1-100)", "default": 95},
             {"key": "max_filesize_kb", "type": "number", "label": "Max file size (KB)", "default": 1200},
-            {"key": "max_workers", "type": "number", "label": "Parallel downloads", "default": 10},
+            {"key": "max_workers", "type": "number", "label": "Parallel downloads", "default": 24,
+             "hint": "Higher = faster (more images download at once). 20–30 is a good range for most sites."},
             {"key": "make_zip", "type": "checkbox", "label": "Zip the output files", "default": True,
              "hint": "Uncheck to skip zipping — files will auto-download individually instead."},
         ],
@@ -350,7 +354,8 @@ TOOLS = {
              "placeholder": "https://example.com/image-1.jpg\nhttps://example.com/image-2.jpg", "required": False},
             {"key": "canvas_size", "type": "number", "label": "Canvas size (px)", "default": 1080},
             {"key": "jpeg_quality", "type": "number", "label": "JPEG quality (1-100)", "default": 90},
-            {"key": "max_workers", "type": "number", "label": "Parallel downloads", "default": 10},
+            {"key": "max_workers", "type": "number", "label": "Parallel downloads", "default": 24,
+             "hint": "Higher = faster (more images download at once). 20–30 is a good range for most sites."},
             {"key": "make_zip", "type": "checkbox", "label": "Zip the output files", "default": True,
              "hint": "Uncheck to skip zipping — files will auto-download individually instead."},
         ],
@@ -367,7 +372,8 @@ TOOLS = {
             {"key": "urls_text", "type": "textarea", "label": "Or paste image URLs directly (one per line)",
              "placeholder": "https://example.com/image-1.jpg\nhttps://example.com/image-2.jpg", "required": False},
             {"key": "jpeg_quality", "type": "number", "label": "JPEG quality (1-100)", "default": 95},
-            {"key": "max_workers", "type": "number", "label": "Parallel downloads", "default": 10},
+            {"key": "max_workers", "type": "number", "label": "Parallel downloads", "default": 24,
+             "hint": "Higher = faster (more images download at once). 20–30 is a good range for most sites."},
             {"key": "make_zip", "type": "checkbox", "label": "Zip the output files", "default": True,
              "hint": "Uncheck to skip zipping — files will auto-download individually instead."},
         ],
@@ -495,12 +501,18 @@ def new_job(tool_id):
         JOBS[job_id] = {
             "id": job_id,
             "tool_id": tool_id,
-            "status": "queued",   # queued -> running -> done | error
+            "status": "queued",   # queued -> running -> done | error | stopped
             "logs": [],
             "files": [],          # output filenames (relative to output dir)
             "error": None,
             "dir": job_dir,
             "auto_download": False,
+            "started_at": None,   # epoch seconds, set when status -> running
+            "stop_event": threading.Event(),
+            # Live progress, only populated for processors that accept a
+            # `progress` callback (see run_job below). total == 0 means
+            # "this tool doesn't report progress" and the UI hides the meter.
+            "progress": {"total": 0, "success": 0, "failed": 0, "current_file": None},
         }
     return job_id
 
@@ -521,20 +533,34 @@ def run_job(job_id, tool_id, form_kwargs):
 
     with JOBS_LOCK:
         job["status"] = "running"
+        job["started_at"] = time.time()
 
     def log(msg):
         log_to_job(job_id, msg)
 
+    def progress(**kwargs):
+        # Processors call this after each file (see original_name_1080.py)
+        # with any subset of: total, success, failed, current_file.
+        with JOBS_LOCK:
+            job["progress"].update({k: v for k, v in kwargs.items() if v is not None or k == "current_file"})
+
+    kwargs = dict(form_kwargs)
+    run_params = inspect.signature(module.run).parameters
+    if "progress" in run_params:
+        kwargs["progress"] = progress
+    if "stop_event" in run_params:
+        kwargs["stop_event"] = job["stop_event"]
+
     try:
-        result_files = module.run(output_dir=output_dir, log=log, **form_kwargs)
+        result_files = module.run(output_dir=output_dir, log=log, **kwargs)
         rel_names = [Path(f).name for f in (result_files or [])]
         with JOBS_LOCK:
             job["files"] = rel_names
-            job["status"] = "done"
+            job["status"] = "stopped" if job["stop_event"].is_set() else "done"
         log("")
-        log("✅ Finished.")
+        log("⏹ Stopped by user." if job["stop_event"].is_set() else "✅ Finished.")
         output_bytes = sum((output_dir / n).stat().st_size for n in rel_names if (output_dir / n).exists())
-        stats_store.record_job(tool_id, tool["name"], tool["stage"], "done",
+        stats_store.record_job(tool_id, tool["name"], tool["stage"], job["status"],
                                 output_bytes=output_bytes, file_count=len(rel_names))
     except Exception as e:
         log("")
@@ -938,7 +964,19 @@ def job_status(job_id):
             "files": job["files"],
             "error": job["error"],
             "auto_download": job.get("auto_download", False),
+            "started_at": job.get("started_at"),
+            "progress": job.get("progress"),
         })
+
+
+@app.route("/job/<job_id>/stop", methods=["POST"])
+def job_stop(job_id):
+    job = JOBS.get(job_id)
+    if not job:
+        abort(404)
+    job["stop_event"].set()
+    log_to_job(job_id, "⏹ Stop requested — finishing in-flight files, skipping the rest…")
+    return jsonify({"ok": True})
 
 
 @app.route("/job/<job_id>/download/<path:filename>")
