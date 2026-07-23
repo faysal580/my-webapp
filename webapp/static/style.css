@@ -808,6 +808,153 @@ a { color: inherit; }
   50% { opacity: 0.4; transform: scale(0.7); }
 }
 
+/* ── Live progress card ────────────────────────────────────────────── */
+
+.progress-card {
+  margin-top: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 26px;
+  box-shadow: var(--shadow-card);
+}
+.progress-card-top { margin-bottom: 22px; }
+.progress-card-title {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.progress-bar-wrap { position: relative; padding-top: 26px; }
+.progress-bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-text), var(--accent-2) 55%, var(--accent));
+  transition: width 0.35s ease;
+}
+.progress-bubble {
+  position: absolute;
+  top: -6px;
+  min-width: 40px;
+  text-align: center;
+  transform: translateX(0);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 4px 9px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-card);
+  transition: left 0.35s ease;
+}
+
+.progress-meta-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.progress-count {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  color: var(--subtext);
+}
+.progress-count-num { color: var(--accent-text); font-weight: 700; }
+.progress-percent-block { text-align: right; }
+.progress-percent-num {
+  font-family: var(--font-mono);
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--accent-2);
+  line-height: 1;
+}
+.progress-percent-sign { font-size: 1.1rem; }
+.progress-percent-label {
+  font-size: 0.78rem;
+  color: var(--subtext);
+  margin-top: 2px;
+}
+
+.progress-stats-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 720px) {
+  .progress-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.progress-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--panel-2);
+  min-width: 0;
+}
+.progress-stat-icon {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid currentColor;
+}
+.progress-stat-icon svg { width: 17px; height: 17px; }
+.progress-stat-icon.stat-success { color: var(--green); }
+.progress-stat-icon.stat-failed { color: var(--red); }
+.progress-stat-icon.stat-remaining { color: var(--accent); }
+.progress-stat-icon.stat-current { color: var(--accent-2); }
+.progress-stat-label {
+  font-size: 0.78rem;
+  color: var(--subtext);
+  margin-bottom: 2px;
+}
+.progress-stat-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.progress-stat-value.stat-success { color: var(--green); }
+.progress-stat-value.stat-failed { color: var(--red); }
+.progress-stat-value.stat-remaining { color: var(--accent); }
+.progress-stat-value.stat-current { color: var(--accent-2); }
+
+/* ── Notice row (with optional right-aligned timestamp) ───────────────── */
+
+.notice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.notice-timestamp {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--yellow);
+  white-space: nowrap;
+}
+
 .console {
   margin-top: 24px;
   border: 1px solid #262b35;
@@ -835,6 +982,108 @@ a { color: inherit; }
   color: #5c6376;
   letter-spacing: 0.06em;
 }
+.console-bar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.autoscroll-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #8a92a6;
+  cursor: pointer;
+  user-select: none;
+}
+.autoscroll-toggle input { display: none; }
+.autoscroll-switch {
+  width: 30px;
+  height: 17px;
+  border-radius: 999px;
+  background: #343d4d;
+  position: relative;
+  transition: background 0.15s ease;
+}
+.autoscroll-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+.autoscroll-toggle input:checked + .autoscroll-switch { background: var(--accent-2); }
+.autoscroll-toggle input:checked + .autoscroll-switch::after { transform: translateX(13px); }
+
+.clear-log-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e222b;
+  color: #8a92a6;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.clear-log-btn:hover { color: #d6dbe8; border-color: #3a4152; }
+
+/* ── Job footer: stop button + after-completion select ─────────────── */
+
+.job-footer {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.stop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--red-soft);
+  color: var(--red);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.stop-btn:hover { background: rgba(220, 38, 38, 0.18); }
+.stop-btn:disabled { opacity: 0.55; cursor: default; }
+
+.after-completion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--subtext);
+}
+.after-completion select {
+  padding: 10px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.after-completion select:focus { outline: none; border-color: var(--accent); }
 
 .console-body {
   margin: 0;
