@@ -129,63 +129,6 @@
         </div>
       </div>
 
-      <div class="dash-row-2col">
-        <div class="panel-card">
-          <div class="panel-header">
-            <h3>Weekly Overview</h3>
-            <span class="panel-pill">Last 7 Days</span>
-          </div>
-          <div class="chart-legend">
-            <span><i class="dot dot-accent2"></i>Tasks Completed (max {{ dash.task_max }})</span>
-            <span><i class="dot dot-accent"></i>Files Processed, GB (max {{ dash.gb_max }})</span>
-          </div>
-          {% if dash.has_activity %}
-          <svg class="week-chart" viewBox="0 0 460 220" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="30" y1="20" x2="30" y2="180" stroke="var(--border)" stroke-width="1"/>
-            <line x1="30" y1="180" x2="450" y2="180" stroke="var(--border)" stroke-width="1"/>
-            {% for gy in [20, 60, 100, 140, 180] %}
-              <line x1="30" y1="{{ gy }}" x2="450" y2="{{ gy }}" stroke="var(--border-soft)" stroke-width="1"/>
-            {% endfor %}
-            <path d="{{ dash.task_path }}" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="{{ dash.gb_path }}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            {% for pt in dash.task_points %}
-              <circle cx="{{ pt[0] }}" cy="{{ pt[1] }}" r="3.5" fill="var(--accent-2)"/>
-            {% endfor %}
-            {% for pt in dash.gb_points %}
-              <circle cx="{{ pt[0] }}" cy="{{ pt[1] }}" r="3.5" fill="var(--accent)"/>
-            {% endfor %}
-            {% for lbl in dash.weekly_labels %}
-              <text x="{{ 45 + loop.index0 * 60 }}" y="202" class="chart-axis-label chart-axis-label-x" text-anchor="middle">{{ lbl }}</text>
-            {% endfor %}
-          </svg>
-          {% else %}
-            <p class="empty-note">No jobs run yet this week — run a tool and this chart fills in.</p>
-          {% endif %}
-        </div>
-
-        <div class="panel-card">
-          <div class="panel-header">
-            <h3>Top Tools Used</h3>
-            <span class="panel-pill">All-time</span>
-          </div>
-          {% if dash.top_tools %}
-          <div class="progress-list">
-            {% for t in dash.top_tools %}
-              <div class="progress-item">
-                <div class="progress-icon">{{ icons[t.icon]|safe }}</div>
-                <div class="progress-body">
-                  <div class="progress-top"><span>{{ t.name }}</span><span>{{ t.count }}</span></div>
-                  <div class="progress-track"><div class="progress-fill" style="width: {{ t.pct }}%;"></div></div>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-          {% else %}
-            <p class="empty-note">No completed jobs yet — this fills in once tools have been run.</p>
-          {% endif %}
-        </div>
-      </div>
-
     </div>
 
     <div class="dashboard-side">
@@ -221,24 +164,58 @@
       </div>
 
       <div class="panel-card">
-        <div class="panel-header"><h3>Storage Usage</h3></div>
-        <div class="donut-row">
-          <div class="donut" style="--pct: {{ dash.storage_pct }};">
-            <span class="donut-pct">{{ dash.storage_pct }}%<small>Used</small></span>
-          </div>
-          <div class="donut-legend">
-            <div class="donut-legend-total">Total Storage<strong>{{ dash.storage_total_gb }} GB</strong></div>
-            <div><span class="dot dot-accent2"></span>Used <strong>{{ dash.storage_used_gb }} GB</strong></div>
-            <div><span class="dot dot-accent"></span>Free <strong>{{ dash.storage_total_gb - dash.storage_used_gb }} GB</strong></div>
-          </div>
+        <div class="panel-header">
+          <h3>Weekly Overview</h3>
+          <span class="panel-pill">Last 7 Days</span>
         </div>
+        <div class="chart-legend">
+          <span><i class="dot dot-accent2"></i>Tasks Completed (max {{ dash.task_max }})</span>
+          <span><i class="dot dot-accent"></i>Files Processed, GB (max {{ dash.gb_max }})</span>
+        </div>
+        {% if dash.has_activity %}
+        <svg class="week-chart" viewBox="0 0 460 220" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="30" y1="20" x2="30" y2="180" stroke="var(--border)" stroke-width="1"/>
+          <line x1="30" y1="180" x2="450" y2="180" stroke="var(--border)" stroke-width="1"/>
+          {% for gy in [20, 60, 100, 140, 180] %}
+            <line x1="30" y1="{{ gy }}" x2="450" y2="{{ gy }}" stroke="var(--border-soft)" stroke-width="1"/>
+          {% endfor %}
+          <path d="{{ dash.task_path }}" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="{{ dash.gb_path }}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          {% for pt in dash.task_points %}
+            <circle cx="{{ pt[0] }}" cy="{{ pt[1] }}" r="3.5" fill="var(--accent-2)"/>
+          {% endfor %}
+          {% for pt in dash.gb_points %}
+            <circle cx="{{ pt[0] }}" cy="{{ pt[1] }}" r="3.5" fill="var(--accent)"/>
+          {% endfor %}
+          {% for lbl in dash.weekly_labels %}
+            <text x="{{ 45 + loop.index0 * 60 }}" y="202" class="chart-axis-label chart-axis-label-x" text-anchor="middle">{{ lbl }}</text>
+          {% endfor %}
+        </svg>
+        {% else %}
+          <p class="empty-note">No jobs run yet this week — run a tool and this chart fills in.</p>
+        {% endif %}
       </div>
 
-      <div class="need-help-card">
-        <h3>Need Help?</h3>
-        <p>Explore our documentation or contact support for assistance.</p>
-        <a class="btn-help-primary" href="https://github.com" target="_blank" rel="noopener">View Documentation</a>
-        <a class="btn-help-secondary" href="mailto:support@cartupbd.com">Contact Support</a>
+      <div class="panel-card">
+        <div class="panel-header">
+          <h3>Top Tools Used</h3>
+          <span class="panel-pill">All-time</span>
+        </div>
+        {% if dash.top_tools %}
+        <div class="progress-list">
+          {% for t in dash.top_tools %}
+            <div class="progress-item">
+              <div class="progress-icon">{{ icons[t.icon]|safe }}</div>
+              <div class="progress-body">
+                <div class="progress-top"><span>{{ t.name }}</span><span>{{ t.count }}</span></div>
+                <div class="progress-track"><div class="progress-fill" style="width: {{ t.pct }}%;"></div></div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <p class="empty-note">No completed jobs yet — this fills in once tools have been run.</p>
+        {% endif %}
       </div>
 
     </div>
