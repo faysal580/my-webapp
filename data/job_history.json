@@ -97,5 +97,14 @@
     "status": "done",
     "output_bytes": 2922237,
     "file_count": 1
+  },
+  {
+    "ts": 1784800499.888791,
+    "tool_id": "multi_link_downloader",
+    "tool_name": "Multi Link Image Downloader",
+    "stage": "DOWNLOAD",
+    "status": "done",
+    "output_bytes": 1727573,
+    "file_count": 1
   }
 ]
