@@ -12,10 +12,12 @@ import csv
 import re
 from io import BytesIO
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import requests
 from PIL import Image
 
-from .common import zip_folder, get_pooled_session, run_parallel_downloads
+from .common import zip_folder
 
 
 def sanitize_filename(name: str) -> str:
@@ -88,20 +90,16 @@ def load_tasks(csv_path, log):
         return tasks
 
 
-def download_one(item, out_dir, target_size, jpeg_quality, timeout, max_workers, stop_event=None, bg_color=(255, 255, 255)):
+def download_one(item, out_dir, target_size, jpeg_quality, timeout, bg_color=(255, 255, 255)):
     row_index, name, url = item
     filename = sanitize_filename(name)
     filepath = out_dir / f"{filename}.jpg"
 
-    if stop_event is not None and stop_event.is_set():
-        return (False, filepath.name, f"[Row {row_index}] Skipped {name} (stopped by user)", 0)
-
     if filepath.exists():
-        return (True, filepath.name, f"[Row {row_index}] {name} already exists, skipping.", filepath.stat().st_size)
+        return f"[Row {row_index}] {name} already exists, skipping."
 
     try:
-        session = get_pooled_session(max_workers)
-        resp = session.get(url, timeout=timeout)
+        resp = requests.get(url, timeout=timeout)
         resp.raise_for_status()
 
         img = Image.open(BytesIO(resp.content))
@@ -127,10 +125,9 @@ def download_one(item, out_dir, target_size, jpeg_quality, timeout, max_workers,
         img = canvas
 
         img.save(filepath, "JPEG", quality=jpeg_quality)
-        size_bytes = filepath.stat().st_size if filepath.exists() else 0
-        return (True, filepath.name, f"[Row {row_index}] Downloaded {name} -> {filepath.name}", size_bytes)
+        return f"[Row {row_index}] Downloaded {name} -> {filepath.name}"
     except Exception as e:
-        return (False, filepath.name, f"[Row {row_index}] ERROR for {name} ({url}): {e}", 0)
+        return f"[Row {row_index}] ERROR for {name} ({url}): {e}"
 
 
 def parse_pasted_urls(urls_text):
@@ -148,8 +145,7 @@ def parse_pasted_urls(urls_text):
 
 
 def run(output_dir: Path, log, csv_file: Path = None, urls_text: str = None,
-        canvas_size=1080, jpeg_quality=90, max_workers=24, timeout=20, make_zip=True,
-        progress=None, stop_event=None):
+        canvas_size=1080, jpeg_quality=90, max_workers=10, timeout=30, make_zip=True):
     output_dir = Path(output_dir)
     images_dir = output_dir / "downloads"
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -173,15 +169,13 @@ def run(output_dir: Path, log, csv_file: Path = None, urls_text: str = None,
     log(f"Starting parallel downloads with {max_workers} workers…")
 
     target_size = (canvas_size, canvas_size)
-    success_count, failed_count, _bytes = run_parallel_downloads(
-        tasks,
-        lambda item, stop_evt: download_one(item, images_dir, target_size, jpeg_quality, timeout, max_workers, stop_evt),
-        max_workers, log, progress, stop_event,
-    )
-
-    if stop_event is not None and stop_event.is_set():
-        log(f"Stopped early: {success_count} downloaded, {failed_count} failed/skipped, "
-            f"{len(tasks) - success_count - failed_count} not started.")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(download_one, item, images_dir, target_size, jpeg_quality, timeout): item
+            for item in tasks
+        }
+        for future in as_completed(futures):
+            log(future.result())
 
     if not make_zip:
         log("All downloads done!")
@@ -195,6 +189,6 @@ def run(output_dir: Path, log, csv_file: Path = None, urls_text: str = None,
 
     log("All downloads done! Zipping…")
     zip_path = output_dir / "multi_link_images.zip"
-    zip_folder(images_dir, zip_path, log=log)
+    zip_folder(images_dir, zip_path)
     log(f"Saved -> {zip_path.name}")
     return [zip_path]
