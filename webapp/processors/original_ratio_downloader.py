@@ -92,12 +92,12 @@ def to_rgb(img: Image.Image) -> Image.Image:
     return img.convert("RGB")
 
 
-def download_one(item, out_dir, jpeg_quality, timeout):
+def download_one(item, out_dir, jpeg_quality, timeout, stop_event=None):
     row_index, url, stem = item
     filepath = out_dir / f"{stem}.jpg"
 
-    if filepath.exists():
-        return f"[Row {row_index}] '{stem}' already exists — skipped."
+    if stop_event is not None and stop_event.is_set():
+        return (False, filepath.name, f"[Row {row_index}] Skipped '{stem}' (stopped by user)", 0)
 
     try:
         resp = requests.get(url, timeout=timeout)
@@ -109,9 +109,10 @@ def download_one(item, out_dir, jpeg_quality, timeout):
         img = to_rgb(img)
         img.save(filepath, "JPEG", quality=jpeg_quality, subsampling=0, optimize=True)
 
-        return f"[Row {row_index}] ✓ {stem}.jpg ({img.width}×{img.height})"
+        size_bytes = filepath.stat().st_size if filepath.exists() else 0
+        return (True, filepath.name, f"[Row {row_index}] ✓ {stem}.jpg ({img.width}×{img.height})", size_bytes)
     except Exception as e:
-        return f"[Row {row_index}] ERROR ({stem}): {e}"
+        return (False, filepath.name, f"[Row {row_index}] ERROR ({stem}): {e}", 0)
 
 
 def parse_pasted_urls(urls_text):
@@ -129,7 +130,8 @@ def parse_pasted_urls(urls_text):
 
 
 def run(output_dir: Path, log, csv_file: Path = None, urls_text: str = None,
-        jpeg_quality=95, max_workers=10, timeout=30, make_zip=True):
+        jpeg_quality=95, max_workers=10, timeout=30, make_zip=True,
+        progress=None, stop_event=None):
     output_dir = Path(output_dir)
     images_dir = output_dir / "downloads"
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -155,16 +157,57 @@ def run(output_dir: Path, log, csv_file: Path = None, urls_text: str = None,
     if not rows:
         raise ValueError("Please upload a CSV file or paste at least one image URL.")
 
-    log(f"Total valid rows: {len(rows)}")
-    log(f"Starting downloads with {max_workers} workers…")
+    # Drop every row whose filename (its original-name stem) collides with
+    # another row's — only names that are unique across the whole batch get
+    # downloaded (no "_2", "_3" renaming).
+    name_counts = {}
+    for _, _, stem in rows:
+        name_counts[stem] = name_counts.get(stem, 0) + 1
+
+    unique_rows = [item for item in rows if name_counts[item[2]] == 1]
+    dropped = len(rows) - len(unique_rows)
+
+    if dropped:
+        for row_index, _, stem in rows:
+            if name_counts[stem] > 1:
+                log(f"[Row {row_index}] Duplicate filename '{stem}' (same as {name_counts[stem] - 1} other row(s)) — skipping.")
+
+    if not unique_rows:
+        raise ValueError("Every row's filename collided with another — nothing unique left to download.")
+
+    log(f"Total valid rows to download: {len(unique_rows)} ({dropped} skipped for duplicate filename)")
+    log(f"Starting parallel downloads with {max_workers} workers…")
+
+    total = len(unique_rows)
+    success_count = 0
+    failed_count = 0
+    bytes_downloaded = 0
+
+    def report(current_file=None):
+        if progress:
+            progress(total=total, success=success_count, failed=failed_count,
+                      current_file=current_file, bytes=bytes_downloaded)
+
+    report()
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(download_one, item, images_dir, jpeg_quality, timeout): item
-            for item in rows
+            executor.submit(download_one, item, images_dir, jpeg_quality, timeout, stop_event): item
+            for item in unique_rows
         }
         for future in as_completed(futures):
-            log(future.result())
+            ok, filename, message, size_bytes = future.result()
+            if ok:
+                success_count += 1
+                bytes_downloaded += size_bytes
+            else:
+                failed_count += 1
+            log(message)
+            report(current_file=filename)
+
+    if stop_event is not None and stop_event.is_set():
+        log(f"Stopped early: {success_count} downloaded, {failed_count} failed/skipped, "
+            f"{total - success_count - failed_count} not started.")
 
     if not make_zip:
         log("All downloads done!")
