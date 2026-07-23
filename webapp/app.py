@@ -306,7 +306,7 @@ TOOLS = {
     },
     "single_link_downloader": {
         "name": "Serial Wise Image",
-        "description": "Upload a .csv file (with serial + link columns), or paste URLs directly — downloads each image, fits it onto a white square canvas, and zips the results.",
+        "description": "Upload a .csv file (with serial + link columns), or paste URLs directly — downloads each image in parallel, fits it onto a white square canvas, skips any rows whose filename duplicates another row's, and zips the results.",
         "stage": "DOWNLOAD",
         "icon": ICONS["download"],
         "fields": [
@@ -343,7 +343,7 @@ TOOLS = {
     },
     "multi_link_downloader": {
         "name": "Multi Link Image Downloader",
-        "description": "Upload a .csv file with multiple serial + multiple link columns (e.g. serial 1/2/3 + Image Link 1/2/3), or paste URLs directly — downloads every image, fits it onto a square canvas, and zips the results.",
+        "description": "Upload a .csv file with multiple serial + multiple link columns (e.g. serial 1/2/3 + Image Link 1/2/3), or paste URLs directly — downloads every image in parallel, fits it onto a square canvas, skips any rows whose filename duplicates another row's, and zips the results.",
         "stage": "DOWNLOAD",
         "icon": ICONS["download"],
         "fields": [
@@ -361,7 +361,7 @@ TOOLS = {
     },
     "original_ratio_downloader": {
         "name": "Original Name & Ratio Downloader",
-        "description": "Upload a .csv file (with a link/url column), or paste URLs directly — downloads each image as a JPG keeping its original filename and aspect ratio (no cropping or resizing), then zips the results.",
+        "description": "Upload a .csv file (with a link/url column), or paste URLs directly — downloads each image in parallel as a JPG keeping its original filename and aspect ratio (no cropping or resizing), skips any rows whose filename duplicates another row's, then zips the results.",
         "stage": "DOWNLOAD",
         "icon": ICONS["download"],
         "fields": [
