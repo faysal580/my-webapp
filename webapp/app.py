@@ -671,28 +671,75 @@ def build_dashboard_context():
     }
 
 
+def _matches_tool_search(tool_id, tool, search_query):
+    if not search_query:
+        return True
+    searchable = " ".join([
+        tool_id,
+        tool.get("name", ""),
+        tool.get("description", ""),
+        tool.get("stage", ""),
+    ]).lower()
+    return search_query in searchable
+
+
+def _matches_display_item(entry, search_query):
+    if entry["kind"] == "tool":
+        return _matches_tool_search(entry["id"], entry["item"], search_query)
+    group = TOOL_GROUPS.get(entry["id"], {})
+    if any(
+        _matches_tool_search(tool_id, TOOLS[tool_id], search_query)
+        for tool_id in group.get("tool_ids", [])
+        if tool_id in TOOLS
+    ):
+        return True
+    searchable = " ".join([
+        entry["id"],
+        entry["item"].get("name", ""),
+        entry["item"].get("description", ""),
+        entry["item"].get("stage", ""),
+    ]).lower()
+    return search_query in searchable
+
+
 @app.route("/")
 def index():
-    grouped_ids = set()
-    for group in TOOL_GROUPS.values():
-        grouped_ids.update(group["tool_ids"])
-
-    seen_groups = set()
-    display_items = []
-    for tool_id, tool in TOOLS.items():
-        if tool_id in grouped_ids:
-            group_id = next(gid for gid, g in TOOL_GROUPS.items() if tool_id in g["tool_ids"])
-            if group_id in seen_groups:
-                continue
-            seen_groups.add(group_id)
-            display_items.append({"kind": "group", "id": group_id, "item": TOOL_GROUPS[group_id]})
-        else:
-            display_items.append({"kind": "tool", "id": tool_id, "item": tool})
-
     stage_filter = request.args.get("stage")
+    search_query = request.args.get("q", "").strip().lower()
     if stage_filter:
         stage_filter = stage_filter.upper()
-        display_items = [e for e in display_items if e["item"]["stage"] == stage_filter]
+
+    if stage_filter:
+        # Inside a single stage view (e.g. the "Downloaders" nav link), show
+        # every matching tool individually — no folder grouping — so all of
+        # them are visible in one click.
+        display_items = [
+            {"kind": "tool", "id": tool_id, "item": tool}
+            for tool_id, tool in TOOLS.items()
+            if tool["stage"] == stage_filter and _matches_tool_search(tool_id, tool, search_query)
+        ]
+    else:
+        grouped_ids = set()
+        for group in TOOL_GROUPS.values():
+            grouped_ids.update(group["tool_ids"])
+
+        seen_groups = set()
+        display_items = []
+        for tool_id, tool in TOOLS.items():
+            if tool_id in grouped_ids:
+                group_id = next(gid for gid, g in TOOL_GROUPS.items() if tool_id in g["tool_ids"])
+                if group_id in seen_groups:
+                    continue
+                seen_groups.add(group_id)
+                display_items.append({"kind": "group", "id": group_id, "item": TOOL_GROUPS[group_id]})
+            else:
+                display_items.append({"kind": "tool", "id": tool_id, "item": tool})
+
+        if search_query:
+            display_items = [
+                entry for entry in display_items
+                if _matches_display_item(entry, search_query)
+            ]
 
     dash_ctx = {} if stage_filter else build_dashboard_context()
 
