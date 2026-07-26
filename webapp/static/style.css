@@ -1805,3 +1805,124 @@ body.login-page {
 .status-dot-warn { background: var(--yellow); box-shadow: 0 0 0 3px var(--yellow-soft); }
 .status-state-warn { color: var(--yellow); }
 .activity-icon-error { background: var(--red-soft); color: var(--red); }
+
+/* ── Maintenance Break screen (login page + already-logged-in users) ── */
+.login-card-maintenance {
+  max-width: 520px;
+  text-align: center;
+  padding: 40px 36px;
+}
+.maintenance-illustration {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  margin: 0 auto 20px;
+  display: block;
+}
+.maintenance-heading {
+  margin: 0 0 10px;
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+.maintenance-gradient-text {
+  background: linear-gradient(120deg, var(--accent-text), var(--accent-2) 60%, var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.maintenance-divider {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+.maintenance-divider span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-text);
+}
+.maintenance-divider span:nth-child(2) { background: var(--accent-2); }
+.maintenance-divider span:nth-child(3) { background: var(--accent); }
+.maintenance-subtext {
+  font-size: 0.95rem;
+  color: var(--subtext);
+  line-height: 1.6;
+  margin: 0 0 22px;
+}
+.maintenance-eta-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin: 0 0 24px;
+}
+.maintenance-eta-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft, rgba(236, 24, 118, 0.1));
+  color: var(--accent-text);
+}
+.maintenance-eta-icon svg { width: 20px; height: 20px; }
+.maintenance-eta-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.maintenance-eta-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+.maintenance-check-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 13px 20px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--accent-text), var(--accent-2) 55%, var(--accent));
+  margin-bottom: 18px;
+}
+.maintenance-check-btn:hover { filter: brightness(1.06); }
+.maintenance-check-btn svg { width: 16px; height: 16px; }
+.maintenance-footer {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+.maintenance-footer a { color: var(--accent); }
+
+.maintenance-admin-toggle {
+  margin-top: 18px;
+  border-top: 1px dashed var(--border);
+  padding-top: 14px;
+  text-align: left;
+}
+.maintenance-admin-toggle summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  text-align: center;
+}
+.maintenance-admin-toggle summary::-webkit-details-marker { display: none; }
+.maintenance-admin-toggle summary:hover { color: var(--accent); }
+.maintenance-admin-form { margin-top: 14px; }
