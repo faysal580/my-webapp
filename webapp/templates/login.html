@@ -3,77 +3,87 @@
 {% block body_class %}login-page{% endblock %}
 {% block content %}
   <section class="login-wrap">
-    <div class="login-card">
-
-      <div class="login-brand">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cartup Visual Team" class="login-brand-logo">
-        <div class="login-brand-word">cartup</div>
-        <div class="login-brand-sub">
-          <span class="login-brand-line login-brand-line-pink"></span>VISUAL TEAM<span class="login-brand-line login-brand-line-blue"></span>
-        </div>
-      </div>
-
-      <h1 class="login-title">Welcome Back!</h1>
-      <p class="lead login-lead">Sign in to continue to your dashboard</p>
+    <div class="login-card {% if maintenance %}login-card-maintenance{% endif %}">
 
       {% if maintenance %}
-        <div class="login-error login-maintenance-banner">
-          🛠️ সাইটটি এখন Maintenance-এ আছে। শুধু admin লগইন করতে পারবে।
-          {% if maintenance_message %}<br>{{ maintenance_message }}{% endif %}
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="login-error">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+
+        {% set message = maintenance_message %}
+        {% set show_admin_login = true %}
+        {% set show_logout = false %}
+        {% include "_maintenance_screen.html" with context %}
+
+      {% else %}
+
+        <div class="login-brand">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cartup Visual Team" class="login-brand-logo">
+          <div class="login-brand-word">cartup</div>
+          <div class="login-brand-sub">
+            <span class="login-brand-line login-brand-line-pink"></span>VISUAL TEAM<span class="login-brand-line login-brand-line-blue"></span>
+          </div>
         </div>
+
+        <h1 class="login-title">Welcome Back!</h1>
+        <p class="lead login-lead">Sign in to continue to your dashboard</p>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="login-error">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+
+        <form method="post" class="login-form">
+          <input type="hidden" name="next" value="{{ next_url }}">
+
+          <div class="form-row">
+            <label for="username">Email or Username</label>
+            <div class="input-icon-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input class="text-input has-icon" type="text" id="username" name="username" placeholder="Enter your email or username" autocomplete="username" autofocus required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label for="password">Password</label>
+            <div class="input-icon-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <input class="text-input has-icon has-toggle" type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+              <button type="button" class="input-toggle" id="pwToggle" aria-label="Show password">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="login-row-between">
+            <label class="checkbox-label login-remember">
+              <input type="checkbox" name="remember" checked>
+              Remember me
+            </label>
+            <span class="login-forgot" title="Password resets are handled by an admin right now">Forgot Password?</span>
+          </div>
+
+          <button type="submit" class="run-btn login-btn">
+            <span>Log In</span>
+            <span class="login-btn-circle">&rarr;</span>
+          </button>
+        </form>
+
+        <div class="login-divider"><span>Or continue with</span></div>
+
+        <div class="login-social-row" title="Not wired up yet — this app only supports username &amp; password login">
+          <span class="login-social-btn"><span class="login-social-icon">G</span> Google</span>
+          <span class="login-social-btn"><span class="login-social-icon">⊞</span> Microsoft</span>
+          <span class="login-social-btn"><span class="login-social-icon">◆</span> GitHub</span>
+        </div>
+
+        <p class="login-contact">Don't have an account? <a href="mailto:" class="login-contact-link">Contact Admin</a></p>
+
       {% endif %}
-
-      {% with messages = get_flashed_messages() %}
-        {% if messages %}
-          <div class="login-error">{{ messages[0] }}</div>
-        {% endif %}
-      {% endwith %}
-
-      <form method="post" class="login-form">
-        <input type="hidden" name="next" value="{{ next_url }}">
-
-        <div class="form-row">
-          <label for="username">Email or Username</label>
-          <div class="input-icon-wrap">
-            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <input class="text-input has-icon" type="text" id="username" name="username" placeholder="Enter your email or username" autocomplete="username" autofocus required>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <label for="password">Password</label>
-          <div class="input-icon-wrap">
-            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-            <input class="text-input has-icon has-toggle" type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
-            <button type="button" class="input-toggle" id="pwToggle" aria-label="Show password">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="login-row-between">
-          <label class="checkbox-label login-remember">
-            <input type="checkbox" name="remember" checked>
-            Remember me
-          </label>
-          <span class="login-forgot" title="Password resets are handled by an admin right now">Forgot Password?</span>
-        </div>
-
-        <button type="submit" class="run-btn login-btn">
-          <span>Log In</span>
-          <span class="login-btn-circle">&rarr;</span>
-        </button>
-      </form>
-
-      <div class="login-divider"><span>Or continue with</span></div>
-
-      <div class="login-social-row" title="Not wired up yet — this app only supports username &amp; password login">
-        <span class="login-social-btn"><span class="login-social-icon">G</span> Google</span>
-        <span class="login-social-btn"><span class="login-social-icon">⊞</span> Microsoft</span>
-        <span class="login-social-btn"><span class="login-social-icon">◆</span> GitHub</span>
-      </div>
-
-      <p class="login-contact">Don't have an account? <a href="mailto:" class="login-contact-link">Contact Admin</a></p>
     </div>
   </section>
 
