@@ -1,0 +1,97 @@
+{# Expects: message (string), show_admin_login (bool), next_url (string, only used
+   when show_admin_login is true), show_logout (bool) #}
+<div class="maintenance-screen">
+  <svg class="maintenance-illustration" viewBox="0 0 460 250" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="mtGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="var(--accent-text)"/>
+        <stop offset="55%" stop-color="var(--accent-2)"/>
+        <stop offset="100%" stop-color="var(--accent)"/>
+      </linearGradient>
+      <pattern id="mtStripes" width="16" height="16" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+        <rect width="16" height="16" fill="var(--accent-text)"/>
+        <rect width="8" height="16" fill="#ffffff" opacity="0.9"/>
+      </pattern>
+    </defs>
+
+    <!-- decorative corner squares -->
+    <rect x="18" y="18" width="10" height="10" rx="2" fill="var(--accent-2)" opacity="0.25"/>
+    <rect x="34" y="34" width="10" height="10" rx="2" fill="var(--accent-text)" opacity="0.2"/>
+    <rect x="418" y="20" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.25"/>
+    <circle cx="440" cy="60" r="4" fill="var(--accent-text)" opacity="0.4"/>
+
+    <!-- traffic cone -->
+    <ellipse cx="66" cy="216" rx="30" ry="8" fill="var(--accent-text)" opacity="0.9"/>
+    <polygon points="66,150 40,216 92,216" fill="var(--accent-text)"/>
+    <rect x="49" y="188" width="34" height="9" fill="#ffffff" opacity="0.9"/>
+    <rect x="55" y="168" width="22" height="8" fill="#ffffff" opacity="0.85"/>
+
+    <!-- barrier -->
+    <line x1="358" y1="182" x2="342" y2="222" stroke="var(--accent-2)" stroke-width="7" stroke-linecap="round"/>
+    <line x1="412" y1="182" x2="428" y2="222" stroke="var(--accent-2)" stroke-width="7" stroke-linecap="round"/>
+    <rect x="332" y="164" width="106" height="22" rx="4" fill="url(#mtStripes)" stroke="var(--accent-text)" stroke-width="1.5"/>
+
+    <!-- monitor -->
+    <rect x="128" y="24" width="204" height="146" rx="14" fill="var(--panel)" stroke="var(--border)" stroke-width="2"/>
+    <rect x="128" y="24" width="204" height="30" rx="14" fill="var(--accent-soft)"/>
+    <circle cx="148" cy="39" r="4" fill="var(--accent-text)"/>
+    <circle cx="162" cy="39" r="4" fill="var(--accent-2)"/>
+    <circle cx="176" cy="39" r="4" fill="var(--accent)"/>
+    <rect x="128" y="54" width="204" height="116" rx="0" fill="var(--accent-2-soft)"/>
+    <rect x="210" y="198" width="14" height="20" fill="var(--accent-2)" opacity="0.6"/>
+    <polygon points="192,218 242,218 258,238 176,238" fill="var(--accent-2)" opacity="0.6"/>
+
+    <!-- wrench + screwdriver -->
+    <line x1="200" y1="80" x2="258" y2="140" stroke="var(--accent-text)" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="196" cy="76" r="13" fill="none" stroke="var(--accent-text)" stroke-width="7"/>
+    <line x1="258" y1="80" x2="200" y2="140" stroke="var(--accent-2)" stroke-width="7" stroke-linecap="round"/>
+    <rect x="196" y="130" width="14" height="18" rx="3" fill="var(--accent-2)" transform="rotate(-45 203 139)"/>
+  </svg>
+
+  <h1 class="maintenance-heading">Maintenance <span class="maintenance-gradient-text">Break</span></h1>
+  <div class="maintenance-divider"><span></span><span></span><span></span></div>
+
+  <p class="maintenance-subtext">
+    We're making some improvements behind the scenes.<br>
+    The Visual Team platform will be back shortly.
+  </p>
+
+  <div class="maintenance-eta-box">
+    <span class="maintenance-eta-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>
+    </span>
+    <span>
+      <span class="maintenance-eta-label">Estimated return:</span><br>
+      <span class="maintenance-eta-value">{{ message or "We'll be back soon" }}</span>
+    </span>
+  </div>
+
+  <button type="button" class="maintenance-check-btn" onclick="window.location.reload()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><path d="M3 21v-5h5"/></svg>
+    Check Again
+  </button>
+
+  {% if show_logout %}
+    <p class="maintenance-footer"><a href="{{ url_for('logout') }}">Log out</a></p>
+  {% endif %}
+
+  <p class="maintenance-footer">Thank you for your patience and support!</p>
+
+  {% if show_admin_login %}
+    <details class="maintenance-admin-toggle">
+      <summary>Admin Login</summary>
+      <form method="post" class="login-form maintenance-admin-form">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <div class="form-row">
+          <label for="admin_username">Username</label>
+          <input class="text-input" type="text" id="admin_username" name="username" autocomplete="username" required>
+        </div>
+        <div class="form-row">
+          <label for="admin_password">Password</label>
+          <input class="text-input" type="password" id="admin_password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="run-btn login-btn"><span>Log In</span></button>
+      </form>
+    </details>
+  {% endif %}
+</div>

@@ -3,25 +3,10 @@
 {% block body_class %}login-page{% endblock %}
 {% block content %}
   <section class="login-wrap">
-    <div class="login-card" style="text-align:center;">
-      <div class="login-brand">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cartup Visual Team" class="login-brand-logo">
-        <div class="login-brand-word">cartup</div>
-        <div class="login-brand-sub">
-          <span class="login-brand-line login-brand-line-pink"></span>VISUAL TEAM<span class="login-brand-line login-brand-line-blue"></span>
-        </div>
-      </div>
-
-      <h1 class="login-title">🛠️ Maintenance চলছে</h1>
-      <p class="lead login-lead">
-        এখন সাইটটি সাময়িকভাবে বন্ধ আছে — শুধু admin ব্যবহার করতে পারবে।
-        {% if message %}<br>{{ message }}{% endif %}
-        <br>একটু পরে আবার চেষ্টা করুন।
-      </p>
-
-      <a href="{{ url_for('logout') }}" class="run-btn login-btn" style="margin-top: 1rem; text-decoration:none;">
-        <span>Log out</span>
-      </a>
+    <div class="login-card login-card-maintenance">
+      {% set show_admin_login = false %}
+      {% set show_logout = true %}
+      {% include "_maintenance_screen.html" with context %}
     </div>
   </section>
 {% endblock %}
